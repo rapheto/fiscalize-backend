@@ -38,8 +38,8 @@ git --version
 ### 1. Clone o repositório
 
 ```bash
-git clone https://github.com/seu-usuario/projeto-web.git
-cd projeto-web/backend
+git clone https://github.com/seu-usuario/fiscalize-backend.git
+cd fiscalize-backend
 ```
 
 ### 2. Execute o script de setup
@@ -172,7 +172,7 @@ npm start
 ## 📁 Estrutura do Projeto
 
 ```
-backend/
+fiscalize-backend/
 ├── src/
 │   ├── config/          # Configurações da aplicação
 │   ├── controllers/      # Controladores de rotas

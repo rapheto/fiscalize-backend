@@ -6,9 +6,10 @@
 - Terminal ou prompt de comando.
 
 ## 2) Abrir o backend no terminal
-No terminal, acesse a pasta do backend:
+No terminal, clone o repositorio e acesse a pasta:
 ```bash
-cd c:\Users\camila.alcantara\Documents\GithubRepos\projeto-web\backend
+git clone https://github.com/seu-usuario/fiscalize-backend.git
+cd fiscalize-backend
 ```
 
 ## 3) Instalar as dependencias
@@ -17,7 +18,7 @@ npm install
 ```
 
 ## 4) Configurar o banco de dados PostgreSQL
-O backend usa Prisma e o arquivo backend/prisma.config.ts aponta para a URL padrao:
+O backend usa Prisma e o arquivo prisma.config.ts aponta para a URL padrao:
 ```text
 postgresql://postgres:BacoExu@localhost:5432/Fiscalize?schema=public
 ```
@@ -36,7 +37,7 @@ docker run --name fiscalize-postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSW
 ```
 
 ## 5) Criar o arquivo de variaveis de ambiente
-Na pasta backend/, crie um arquivo .env com:
+Na raiz do projeto, crie um arquivo .env com:
 ```env
 DATABASE_URL="postgresql://postgres:BacoExu@localhost:5432/Fiscalize?schema=public"
 ```
@@ -44,7 +45,7 @@ DATABASE_URL="postgresql://postgres:BacoExu@localhost:5432/Fiscalize?schema=publ
 > Ajuste a URL se usar outro usuario, senha, host, porta ou nome de banco.
 
 ## 6) Gerar o cliente Prisma e aplicar o esquema
-No diretorio backend/, execute:
+No diretorio raiz do projeto, execute:
 ```bash
 npx prisma generate
 ```
@@ -57,7 +58,7 @@ npx prisma db push
 Isso criara as tabelas no banco de dados com base em prisma/schema.prisma.
 
 ## 7) Rodar o backend
-Ainda em backend/:
+Ainda na raiz do projeto:
 ```bash
 npm run dev
 ```
@@ -125,6 +126,6 @@ curl -X POST http://localhost:3000/auth/login \
 > Observacao: como o backend usa cookie HTTP-only, curl nao eh ideal para testar rotas protegidas.
 
 ## 11) Observacoes finais
-- Nao existe suite de testes automatica no backend/package.json alem de um placeholder.
+- Nao existe suite de testes automatica no package.json alem de um placeholder.
 - Para rodar em outra maquina, instale Node.js e PostgreSQL (ou Docker), clone o repositorio e siga estes passos.
 - Sempre confirme que o banco esteja online antes de rodar npm run dev.
