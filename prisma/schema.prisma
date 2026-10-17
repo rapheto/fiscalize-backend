@@ -84,11 +84,19 @@ model chamado {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model cidadao {
-  id       String    @id @db.Uuid
-  cpf      String?   @unique @db.VarChar(11)
-  endereco String?   @db.VarChar(255)
-  chamado  chamado[]
-  usuario  usuario   @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id          String    @id @db.Uuid
+  cpf         String?   @unique @db.VarChar(30)
+  rua         String?   @db.VarChar(150)
+  numero      String?   @db.VarChar(20)
+  bairro      String?   @db.VarChar(100)
+  cidade      String?   @db.VarChar(100)
+  estado      String?   @db.VarChar(2)
+  cep         String?   @db.VarChar(9)
+  complemento String?   @db.VarChar(150)
+  endereco    String?   @db.VarChar(500)
+  anonimizar_dados Boolean @default(false)
+  chamado     chamado[]
+  usuario     usuario   @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([cpf], map: "idx_cidadao_cpf", where: raw("(cpf IS NOT NULL)"))
 }

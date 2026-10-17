@@ -9,11 +9,11 @@ export const authController = {
   // Updated by AI.
   async register(req: Request, res: Response, next: NextFunction) {
     try {
-      const { nome, email, senha } = req.body;
+      const { nome, email, senha, cpf, rua, numero, bairro, cidade, estado, cep, complemento } = req.body;
       
       // Validação de campos obrigatórios
-      if (!nome || !email || !senha) {
-        throw new AppError(400, 'Campos obrigatórios: nome, email, senha');
+      if (!nome || !email || !senha || !cpf || !rua || !numero || !bairro || !cidade || !estado || !cep) {
+        throw new AppError(400, 'Campos obrigatórios: nome, email, senha, cpf e endereço completo');
       }
       
       // Validação de formato de email
@@ -24,7 +24,11 @@ export const authController = {
       
       assertPasswordPolicy(senha);
       
-      const usuario = await authService.register(nome, email, senha);
+      const usuario = await authService.register(nome, email, senha, {
+        cpf: String(cpf), rua: String(rua), numero: String(numero), bairro: String(bairro),
+        cidade: String(cidade), estado: String(estado).toUpperCase(), cep: String(cep),
+        ...(complemento !== undefined && { complemento: String(complemento) }),
+      });
       
       res.status(201).json({ id: usuario.id, nome: usuario.nome, email: usuario.email, perfil: usuario.perfil });
     } catch (error) {
@@ -126,8 +130,7 @@ export const authController = {
         perfil: usuario.perfil,
         status: usuario.status,
         criadoem: usuario.criadoem,
-        cpf: usuario.cidadao?.cpf ?? null,
-        endereco: usuario.cidadao?.endereco ?? null,
+        ...usuario.cidadao,
       });
     } catch (error) {
       next(error);
@@ -137,7 +140,7 @@ export const authController = {
   // Created by AI.
   async updateMe(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const { nome, email, cpf, endereco } = req.body;
+      const { nome, email, rua, numero, bairro, cidade, estado, cep, complemento } = req.body;
       if (!nome || !email) {
         throw new AppError(400, 'Campos obrigatórios: nome, email.');
       }
@@ -150,16 +153,18 @@ export const authController = {
       const usuario = await authService.updateProfile(req.user!.id, {
         nome: String(nome).trim(),
         email: String(email).trim(),
-        ...(cpf !== undefined && { cpf: cpf ? String(cpf).trim() : null }),
-        ...(endereco !== undefined && {
-          endereco: endereco ? String(endereco).trim() : null,
-        }),
+        rua: rua ? String(rua).trim() : null,
+        numero: numero ? String(numero).trim() : null,
+        bairro: bairro ? String(bairro).trim() : null,
+        cidade: cidade ? String(cidade).trim() : null,
+        estado: estado ? String(estado).trim().toUpperCase() : null,
+        cep: cep ? String(cep).trim() : null,
+        complemento: complemento ? String(complemento).trim() : null,
       });
 
       res.status(200).json({
         ...usuario,
-        cpf: usuario.cidadao?.cpf ?? null,
-        endereco: usuario.cidadao?.endereco ?? null,
+        ...usuario.cidadao,
       });
     } catch (error) {
       next(error);
@@ -201,6 +206,20 @@ export const authController = {
 
       await authService.deleteOrAnonymize(req.user!.id, String(senha), mode);
       res.clearCookie('token');
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Created by AI.
+  async setAnonymization(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { enabled, senha } = req.body;
+      if (typeof enabled !== 'boolean') {
+        throw new AppError(400, 'Informe enabled como booleano.');
+      }
+      await authService.setAnonymization(req.user!.id, enabled, senha);
       res.status(204).send();
     } catch (error) {
       next(error);

@@ -17,5 +17,7 @@ router.put('/me', authenticate, authController.updateMe);
 router.get('/me/export', authenticate, authController.exportMe);
 // Created by AI.
 router.delete('/me', authenticate, authController.deleteMe);
+// Created by AI.
+router.patch('/me/anonymization', authenticate, authController.setAnonymization);
 
 export default router;

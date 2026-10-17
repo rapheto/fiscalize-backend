@@ -38,7 +38,22 @@ function createRefreshTokenExpiry(): Date {
 export const authService = {
   // Created by AI.
   // Updated by AI.
-  async register(nome: string, email: string, senha: string) {
+  // Updated by AI.
+  async register(
+    nome: string,
+    email: string,
+    senha: string,
+    profile: {
+      cpf: string;
+      rua: string;
+      numero: string;
+      bairro: string;
+      cidade: string;
+      estado: string;
+      cep: string;
+      complemento?: string;
+    }
+  ) {
     assertPasswordPolicy(senha);
 
     const usuarioExistente = await prisma.usuario.findUnique({
@@ -63,7 +78,18 @@ export const authService = {
       });
 
       await tx.cidadao.create({
-        data: { id: created.id },
+        data: {
+          id: created.id,
+          cpf: profile.cpf,
+          rua: profile.rua,
+          numero: profile.numero,
+          bairro: profile.bairro,
+          cidade: profile.cidade,
+          estado: profile.estado,
+          cep: profile.cep,
+          complemento: profile.complemento ?? null,
+          endereco: `${profile.rua}, ${profile.numero}, ${profile.bairro}, ${profile.cidade} - ${profile.estado}, CEP ${profile.cep}${profile.complemento ? `, ${profile.complemento}` : ''}`,
+        },
       });
 
       return created;
@@ -267,8 +293,9 @@ export const authService = {
         criadoem: true,
         cidadao: {
           select: {
-            cpf: true,
-            endereco: true,
+            cpf: true, rua: true, numero: true, bairro: true, cidade: true,
+            estado: true, cep: true, complemento: true, endereco: true,
+            anonimizar_dados: true,
           },
         },
       },
@@ -282,7 +309,17 @@ export const authService = {
   },
 
   // Created by AI.
-  async updateProfile(userId: string, data: { nome: string; email: string; cpf?: string | null; endereco?: string | null }) {
+  async updateProfile(userId: string, data: {
+    nome: string;
+    email: string;
+    rua?: string | null;
+    numero?: string | null;
+    bairro?: string | null;
+    cidade?: string | null;
+    estado?: string | null;
+    cep?: string | null;
+    complemento?: string | null;
+  }) {
     const existingUser = await prisma.usuario.findUnique({
       where: { id: userId },
       select: { id: true, perfil: true },
@@ -300,8 +337,18 @@ export const authService = {
         ...(existingUser.perfil === 'Cidadao' && {
           cidadao: {
             upsert: {
-              create: { cpf: data.cpf ?? null, endereco: data.endereco ?? null },
-              update: { cpf: data.cpf ?? null, endereco: data.endereco ?? null },
+              create: {
+                rua: data.rua ?? null, numero: data.numero ?? null, bairro: data.bairro ?? null,
+                cidade: data.cidade ?? null, estado: data.estado ?? null, cep: data.cep ?? null,
+                complemento: data.complemento ?? null,
+                endereco: `${data.rua ?? ''}, ${data.numero ?? ''}, ${data.bairro ?? ''}, ${data.cidade ?? ''} - ${data.estado ?? ''}, CEP ${data.cep ?? ''}${data.complemento ? `, ${data.complemento}` : ''}`,
+              },
+              update: {
+                rua: data.rua ?? null, numero: data.numero ?? null, bairro: data.bairro ?? null,
+                cidade: data.cidade ?? null, estado: data.estado ?? null, cep: data.cep ?? null,
+                complemento: data.complemento ?? null,
+                endereco: `${data.rua ?? ''}, ${data.numero ?? ''}, ${data.bairro ?? ''}, ${data.cidade ?? ''} - ${data.estado ?? ''}, CEP ${data.cep ?? ''}${data.complemento ? `, ${data.complemento}` : ''}`,
+              },
             },
           },
         }),
@@ -313,7 +360,13 @@ export const authService = {
         perfil: true,
         status: true,
         criadoem: true,
-        cidadao: { select: { cpf: true, endereco: true } },
+        cidadao: {
+          select: {
+            cpf: true, rua: true, numero: true, bairro: true, cidade: true,
+            estado: true, cep: true, complemento: true, endereco: true,
+            anonimizar_dados: true,
+          },
+        },
       },
     });
 
@@ -334,8 +387,8 @@ export const authService = {
         atualizadoem: true,
         cidadao: {
           select: {
-            cpf: true,
-            endereco: true,
+            cpf: true, rua: true, numero: true, bairro: true, cidade: true,
+            estado: true, cep: true, complemento: true,
             chamado: {
               select: {
                 id: true,
@@ -392,13 +445,30 @@ export const authService = {
           status: 'Inativo',
           cidadao: {
             upsert: {
-              create: { cpf: null, endereco: null },
-              update: { cpf: null, endereco: null },
+              create: { cpf: null, rua: null, numero: null, bairro: null, cidade: null, estado: null, cep: null, complemento: null, endereco: null },
+              update: { cpf: null, rua: null, numero: null, bairro: null, cidade: null, estado: null, cep: null, complemento: null, endereco: null },
             },
+
           },
         },
       }),
     ]);
+  },
+
+  // Created by AI.
+  async setAnonymization(userId: string, enabled: boolean, password?: string) {
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: userId },
+      select: { senha: true, cidadao: { select: { id: true } } },
+    });
+    if (!usuario) throw new AppError(404, 'Usuário não encontrado.');
+    if (enabled && (!password || !(await bcrypt.compare(password, usuario.senha)))) {
+      throw new AppError(401, 'Senha inválida.');
+    }
+    await prisma.cidadao.update({
+      where: { id: userId },
+      data: { anonimizar_dados: enabled },
+    });
   },
 
   async addTokenToBlocklist(token: string) {
