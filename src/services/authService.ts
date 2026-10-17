@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { AppError } from '../middlewares/errorMiddleware';
@@ -254,6 +254,7 @@ export const authService = {
     }
   },
 
+  // Updated by AI.
   async getUserById(userId: string) {
     const usuario = await prisma.usuario.findUnique({
       where: { id: userId },
@@ -264,6 +265,12 @@ export const authService = {
         perfil: true,
         status: true,
         criadoem: true,
+        cidadao: {
+          select: {
+            cpf: true,
+            endereco: true,
+          },
+        },
       },
     });
 
@@ -272,6 +279,126 @@ export const authService = {
     }
 
     return usuario;
+  },
+
+  // Created by AI.
+  async updateProfile(userId: string, data: { nome: string; email: string; cpf?: string | null; endereco?: string | null }) {
+    const existingUser = await prisma.usuario.findUnique({
+      where: { id: userId },
+      select: { id: true, perfil: true },
+    });
+
+    if (!existingUser) {
+      throw new AppError(404, 'Usuário não encontrado.');
+    }
+
+    const updatedUser = await prisma.usuario.update({
+      where: { id: userId },
+      data: {
+        nome: data.nome,
+        email: data.email,
+        ...(existingUser.perfil === 'Cidadao' && {
+          cidadao: {
+            upsert: {
+              create: { cpf: data.cpf ?? null, endereco: data.endereco ?? null },
+              update: { cpf: data.cpf ?? null, endereco: data.endereco ?? null },
+            },
+          },
+        }),
+      },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        perfil: true,
+        status: true,
+        criadoem: true,
+        cidadao: { select: { cpf: true, endereco: true } },
+      },
+    });
+
+    return updatedUser;
+  },
+
+  // Created by AI.
+  async exportPersonalData(userId: string) {
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        perfil: true,
+        status: true,
+        criadoem: true,
+        atualizadoem: true,
+        cidadao: {
+          select: {
+            cpf: true,
+            endereco: true,
+            chamado: {
+              select: {
+                id: true,
+                protocolo: true,
+                descricao: true,
+                endereco: true,
+                latitude: true,
+                longitude: true,
+                status: true,
+                criadoem: true,
+                atualizadoem: true,
+              },
+              orderBy: { criadoem: 'desc' },
+            },
+          },
+        },
+      },
+    });
+
+    if (!usuario) {
+      throw new AppError(404, 'Usuário não encontrado.');
+    }
+
+    return usuario;
+  },
+
+  // Created by AI.
+  async deleteOrAnonymize(userId: string, password: string, mode: 'delete' | 'anonymize') {
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, senha: true },
+    });
+
+    if (!usuario || !(await bcrypt.compare(password, usuario.senha))) {
+      throw new AppError(401, 'Senha inválida.');
+    }
+
+    if (mode === 'delete') {
+      await prisma.$transaction([
+        prisma.refresh_token.deleteMany({ where: { usuario_id: userId } }),
+        prisma.usuario.delete({ where: { id: userId } }),
+      ]);
+      return;
+    }
+
+    await prisma.$transaction([
+      prisma.refresh_token.deleteMany({ where: { usuario_id: userId } }),
+      prisma.usuario.update({
+        where: { id: userId },
+        data: {
+          nome: 'Usuário anonimizado',
+          email: `anon-${randomUUID()}@anonimizado.local`,
+          senha: await bcrypt.hash(randomBytes(32).toString('hex'), BCRYPT_COST),
+          status: 'Inativo',
+          cidadao: {
+            upsert: {
+              create: { cpf: null, endereco: null },
+              update: { cpf: null, endereco: null },
+            },
+          },
+        },
+      }),
+    ]);
   },
 
   async addTokenToBlocklist(token: string) {

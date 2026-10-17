@@ -11,5 +11,11 @@ router.post('/refresh', authController.refresh);
 // Updated by AI.
 router.post('/logout', authenticate, authController.logout);
 router.get('/me', authenticate, authController.me);
+// Created by AI.
+router.put('/me', authenticate, authController.updateMe);
+// Created by AI.
+router.get('/me/export', authenticate, authController.exportMe);
+// Created by AI.
+router.delete('/me', authenticate, authController.deleteMe);
 
 export default router;
