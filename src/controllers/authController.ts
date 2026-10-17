@@ -2,8 +2,11 @@ import { Request, Response, NextFunction } from 'express';
 import { authService } from '../services/authService';
 import { AppError } from '../middlewares/errorMiddleware';
 import { AuthRequest } from '../middlewares/authMiddleware';
+import { assertPasswordPolicy } from '../utils/passwordPolicy';
 
 export const authController = {
+  // Created by AI.
+  // Updated by AI.
   async register(req: Request, res: Response, next: NextFunction) {
     try {
       const { nome, email, senha } = req.body;
@@ -19,10 +22,7 @@ export const authController = {
         throw new AppError(400, 'E-mail inválido');
       }
       
-      // Validação de força de senha (mínimo 6 caracteres)
-      if (senha.length < 6) {
-        throw new AppError(400, 'Senha deve ter no mínimo 6 caracteres');
-      }
+      assertPasswordPolicy(senha);
       
       const usuario = await authService.register(nome, email, senha);
       

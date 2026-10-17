@@ -247,6 +247,12 @@ model usuario {
   criadoem      DateTime        @default(now()) @db.Timestamp(6)
   atualizadoem  DateTime        @default(now()) @db.Timestamp(6)
   atualizadopor String?         @db.Uuid
+  // Created by AI.
+  // Updated by AI.
+  tentativas_login_falhas Int   @default(0)
+  // Created by AI.
+  // Updated by AI.
+  bloqueado_ate DateTime?       @db.Timestamptz(6)
   admin         admin?
   cidadao       cidadao?
   gestor        gestor?
