@@ -172,6 +172,25 @@ export const authController = {
   },
 
   // Created by AI.
+  async changePassword(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { senhaAtual, novaSenha, confirmarNovaSenha } = req.body;
+      if (!senhaAtual || !novaSenha || !confirmarNovaSenha) {
+        throw new AppError(400, 'Informe a senha atual, a nova senha e a confirmação.');
+      }
+      if (novaSenha !== confirmarNovaSenha) {
+        throw new AppError(400, 'A confirmação da nova senha não confere.');
+      }
+
+      assertPasswordPolicy(String(novaSenha));
+      await authService.changePassword(req.user!.id, String(senhaAtual), String(novaSenha));
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Created by AI.
   async exportMe(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const data = await authService.exportPersonalData(req.user!.id);

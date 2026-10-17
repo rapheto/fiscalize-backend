@@ -376,6 +376,34 @@ export const openApiSpec = {
         },
       },
     },
+    '/auth/me/password': {
+      patch: {
+        tags: ['Auth'],
+        summary: 'Alterar senha do usuário autenticado',
+        security: BEARER,
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['senhaAtual', 'novaSenha', 'confirmarNovaSenha'],
+                properties: {
+                  senhaAtual: { type: 'string', format: 'password' },
+                  novaSenha: { type: 'string', format: 'password', minLength: 8 },
+                  confirmarNovaSenha: { type: 'string', format: 'password', minLength: 8 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          204: { description: 'Senha alterada' },
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+        },
+      },
+    },
 
     /* ===================== DEMANDS ===================== */
     '/demands': {

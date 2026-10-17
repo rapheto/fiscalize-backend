@@ -374,6 +374,32 @@ export const authService = {
   },
 
   // Created by AI.
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    assertPasswordPolicy(newPassword);
+
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: userId },
+      select: { senha: true },
+    });
+
+    if (!usuario || !(await bcrypt.compare(currentPassword, usuario.senha))) {
+      throw new AppError(401, 'Senha atual inválida.');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_COST);
+    await prisma.$transaction([
+      prisma.usuario.update({
+        where: { id: userId },
+        data: { senha: hashedPassword, tentativas_login_falhas: 0, bloqueado_ate: null },
+      }),
+      prisma.refresh_token.updateMany({
+        where: { usuario_id: userId, revoked_at: null },
+        data: { revoked_at: new Date() },
+      }),
+    ]);
+  },
+
+  // Created by AI.
   async exportPersonalData(userId: string) {
     const usuario = await prisma.usuario.findUnique({
       where: { id: userId },
