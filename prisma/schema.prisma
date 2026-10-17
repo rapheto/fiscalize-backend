@@ -259,11 +259,29 @@ model usuario {
   notificacao   notificacao[]
   usuario_audit usuario_audit[]
   audit_logs    audit_logs[]  @relation("audit_logs_admin")
+  // Updated by AI.
+  refresh_tokens refresh_token[]
 
   @@index([criadoem(sort: Desc)], map: "idx_usuario_criadoem")
   @@index([email], map: "idx_usuario_email")
   @@index([perfil], map: "idx_usuario_perfil")
   @@index([status], map: "idx_usuario_status")
+}
+
+// Created by AI.
+model refresh_token {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  token_hash  String    @unique @db.VarChar(64)
+  usuario_id  String    @db.Uuid
+  expires_at  DateTime  @db.Timestamptz(6)
+  revoked_at  DateTime? @db.Timestamptz(6)
+  replaced_by String?   @db.Uuid
+  criadoem    DateTime  @default(now()) @db.Timestamp(6)
+  usuario     usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@index([usuario_id])
+  @@index([expires_at])
+  @@map("refresh_tokens")
 }
 
 model routing_rules {

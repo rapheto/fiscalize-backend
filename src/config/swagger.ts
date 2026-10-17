@@ -250,7 +250,7 @@ export const openApiSpec = {
     '/auth/login': {
       post: {
         tags: ['Auth'],
-        summary: 'Login (define cookie httpOnly e retorna o token)',
+        summary: 'Login (retorna JWT de acesso e refresh token)',
         security: [],
         requestBody: {
           required: true,
@@ -269,7 +269,7 @@ export const openApiSpec = {
         },
         responses: {
           200: {
-            description: 'Autenticado. O token também é enviado no cookie `token`.',
+            description: 'Autenticado. O JWT de acesso expira em 30 minutos; o refresh token deve ser usado uma única vez por renovação.',
             headers: {
               'Set-Cookie': { schema: { type: 'string' }, description: 'token=<jwt>; HttpOnly' },
             },
@@ -278,11 +278,43 @@ export const openApiSpec = {
                 schema: {
                   allOf: [
                     { $ref: '#/components/schemas/AuthUser' },
-                    { type: 'object', properties: { token: { type: 'string' } } },
+                    {
+                      type: 'object',
+                      properties: {
+                        token: { type: 'string' },
+                        refreshToken: { type: 'string' },
+                      },
+                    },
                   ],
                 },
               },
             },
+          },
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+        },
+      },
+    },
+    '/auth/refresh': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Rotaciona o refresh token e emite novo JWT de acesso',
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['refreshToken'],
+                properties: { refreshToken: { type: 'string' } },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: 'Tokens renovados; o refresh token anterior foi revogado.',
           },
           400: { $ref: '#/components/responses/BadRequest' },
           401: { $ref: '#/components/responses/Unauthorized' },

@@ -32,6 +32,7 @@ export const authController = {
     }
   },
 
+  // Updated by AI.
   async login(req: Request, res: Response, next: NextFunction) {
     try {
       const { email, senha } = req.body;
@@ -41,7 +42,7 @@ export const authController = {
         throw new AppError(400, 'Campos obrigatórios: email, senha');
       }
       
-      const { usuario, token } = await authService.login(email, senha);
+      const { usuario, token, refreshToken } = await authService.login(email, senha);
 
       res.status(200).json({
         id: usuario.id,
@@ -49,12 +50,38 @@ export const authController = {
         email: usuario.email,
         perfil: usuario.perfil,
         token,
+        refreshToken,
       });
     } catch (error) {
       next(error);
     }
   },
 
+  // Created by AI.
+  async refresh(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { refreshToken } = req.body;
+      if (!refreshToken || typeof refreshToken !== 'string') {
+        throw new AppError(400, 'Refresh token obrigatório.');
+      }
+
+      const { usuario, token, refreshToken: nextRefreshToken } =
+        await authService.refresh(refreshToken);
+
+      res.status(200).json({
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        perfil: usuario.perfil,
+        token,
+        refreshToken: nextRefreshToken,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Updated by AI.
   async logout(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       let token = req.cookies.token;
@@ -67,6 +94,10 @@ export const authController = {
 
       if (token) {
         await authService.addTokenToBlocklist(token);
+      }
+
+      if (req.body?.refreshToken) {
+        await authService.revokeRefreshToken(req.body.refreshToken);
       }
       
       res.status(200).json({ message: 'Logout realizado com sucesso' });

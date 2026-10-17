@@ -139,7 +139,8 @@ O arquivo `.env.example` é a referência completa e comentada. Resumo:
 |----------|--------|-----------|
 | `NODE_ENV` | `development` | `development` \| `production` \| `test` |
 | `PORT` | `3000` | Porta HTTP do Express (em produção a Railway define automaticamente) |
-| `JWT_EXPIRATION` | `24h` | Validade do token (ex.: `24h`, `7d`) |
+| `JWT_EXPIRATION` | `30m` | Validade curta do JWT de acesso (mantenha entre 15 e 60 minutos) |
+| `REFRESH_TOKEN_EXPIRATION_DAYS` | `30` | Validade do refresh token; cada renovação revoga o token anterior |
 | `REDIS_URL` | — | Cache de métricas. Se ausente ou indisponível, a aplicação continua funcionando sem cache |
 | `CRON_METRICS_SCHEDULE` | `0 * * * *` | Expressão cron do job de consolidação de métricas |
 | `FRONTEND_URL` | `http://localhost:3001` | Origem extra liberada no CORS durante o desenvolvimento |

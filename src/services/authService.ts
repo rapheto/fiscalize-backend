@@ -1,9 +1,14 @@
 import 'dotenv/config';
+import { createHash, randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { AppError } from '../middlewares/errorMiddleware';
 import { prisma } from '../config/prisma';
-import { JWT_SECRET, JWT_EXPIRATION } from '../config/env';
+import {
+  JWT_SECRET,
+  JWT_EXPIRATION,
+  REFRESH_TOKEN_EXPIRATION_DAYS,
+} from '../config/env';
 import { assertPasswordPolicy } from '../utils/passwordPolicy';
 
 // Blocklist em memória (em produção: Redis)
@@ -17,6 +22,18 @@ const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 // Created by AI.
 // Updated by AI.
 const LOGIN_LOCK_DURATION_MS = 15 * 60 * 1000;
+// Created by AI.
+const REFRESH_TOKEN_BYTES = 32;
+
+function hashRefreshToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+function createRefreshTokenExpiry(): Date {
+  return new Date(
+    Date.now() + REFRESH_TOKEN_EXPIRATION_DAYS * 24 * 60 * 60 * 1000
+  );
+}
 
 export const authService = {
   // Created by AI.
@@ -139,7 +156,102 @@ export const authService = {
       { expiresIn: JWT_EXPIRATION } as SignOptions
     );
 
-    return { usuario, token };
+    const refreshToken = randomBytes(REFRESH_TOKEN_BYTES).toString('base64url');
+    await prisma.refresh_token.create({
+      data: {
+        token_hash: hashRefreshToken(refreshToken),
+        usuario_id: usuario.id,
+        expires_at: createRefreshTokenExpiry(),
+      },
+    });
+
+    return { usuario, token, refreshToken };
+  },
+
+  // Created by AI.
+  // Rotates a one-time refresh token and invalidates the previous token.
+  async refresh(refreshToken: string) {
+    const tokenHash = hashRefreshToken(refreshToken);
+    const storedToken = await prisma.refresh_token.findUnique({
+      where: { token_hash: tokenHash },
+      include: { usuario: true },
+    });
+
+    if (!storedToken || storedToken.expires_at <= new Date()) {
+      throw new AppError(401, 'Refresh token inválido ou expirado.');
+    }
+
+    if (storedToken.revoked_at) {
+      await prisma.refresh_token.updateMany({
+        where: { usuario_id: storedToken.usuario_id, revoked_at: null },
+        data: { revoked_at: new Date() },
+      });
+      throw new AppError(401, 'Refresh token reutilizado. Sessão revogada.');
+    }
+
+    if (storedToken.usuario.status !== 'Ativo') {
+      throw new AppError(403, 'Usuário inativo. Contate o administrador.');
+    }
+
+    const accessToken = jwt.sign(
+      {
+        id: storedToken.usuario.id,
+        email: storedToken.usuario.email,
+        perfil: storedToken.usuario.perfil,
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRATION } as SignOptions
+    );
+    const nextRefreshToken = randomBytes(REFRESH_TOKEN_BYTES).toString('base64url');
+
+    const rotation = await prisma.$transaction(async (tx: any) => {
+      const claimed = await tx.refresh_token.updateMany({
+        where: { id: storedToken.id, revoked_at: null },
+        data: { revoked_at: new Date() },
+      });
+
+      if (claimed.count === 0) {
+        return null;
+      }
+
+      const created = await tx.refresh_token.create({
+        data: {
+          token_hash: hashRefreshToken(nextRefreshToken),
+          usuario_id: storedToken.usuario_id,
+          expires_at: createRefreshTokenExpiry(),
+        },
+      });
+      await tx.refresh_token.update({
+        where: { id: storedToken.id },
+        data: { replaced_by: created.id },
+      });
+      return created;
+    });
+
+    if (!rotation) {
+      await prisma.refresh_token.updateMany({
+        where: { usuario_id: storedToken.usuario_id, revoked_at: null },
+        data: { revoked_at: new Date() },
+      });
+      throw new AppError(401, 'Refresh token reutilizado. Sessão revogada.');
+    }
+
+    return { usuario: storedToken.usuario, token: accessToken, refreshToken: nextRefreshToken };
+  },
+
+  // Created by AI.
+  async revokeRefreshToken(refreshToken: string) {
+    const storedToken = await prisma.refresh_token.findUnique({
+      where: { token_hash: hashRefreshToken(refreshToken) },
+      select: { usuario_id: true },
+    });
+
+    if (storedToken) {
+      await prisma.refresh_token.updateMany({
+        where: { usuario_id: storedToken.usuario_id, revoked_at: null },
+        data: { revoked_at: new Date() },
+      });
+    }
   },
 
   async getUserById(userId: string) {
