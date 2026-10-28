@@ -239,7 +239,7 @@ export const authController = {
   async changePassword(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { senhaAtual, novaSenha, confirmarNovaSenha } = req.body;
-      await authService.consumeMfaVerification(req.user!.id, req.body.mfaToken, 'password');
+      await authService.consumeMfaVerification(req.user!.id, req.body?.mfaToken, 'password');
       if (!senhaAtual || !novaSenha || !confirmarNovaSenha) {
         throw new AppError(400, 'Informe a senha atual, a nova senha e a confirmação.');
       }
@@ -285,7 +285,7 @@ export const authController = {
   async deleteMe(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { senha, mode } = req.body;
-      await authService.consumeMfaVerification(req.user!.id, req.body.mfaToken, mode === 'delete' ? 'delete' : 'anonymization');
+      await authService.consumeMfaVerification(req.user!.id, req.body?.mfaToken, mode === 'delete' ? 'delete' : 'anonymization');
       if (!senha || !['delete', 'anonymize'].includes(mode)) {
         throw new AppError(400, 'Informe senha e mode (delete ou anonymize).');
       }
@@ -305,7 +305,7 @@ export const authController = {
       if (typeof enabled !== 'boolean') {
         throw new AppError(400, 'Informe enabled como booleano.');
       }
-      await authService.consumeMfaVerification(req.user!.id, req.body.mfaToken, 'anonymization');
+      await authService.consumeMfaVerification(req.user!.id, req.body?.mfaToken, 'anonymization');
       await authService.setAnonymization(req.user!.id, enabled, senha);
       res.status(204).send();
     } catch (error) {

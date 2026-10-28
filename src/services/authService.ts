@@ -358,7 +358,12 @@ export const authService = {
   },
 
   // Created by AI.
-  async consumeMfaVerification(userId: string, verificationToken: string, action: CriticalAction) {
+  // Updated by AI.
+  async consumeMfaVerification(userId: string, verificationToken: unknown, action: CriticalAction) {
+    if (typeof verificationToken !== 'string' || verificationToken.length === 0) {
+      throw new AppError(401, 'Verificação adicional obrigatória ou expirada.');
+    }
+
     const challenge = await prisma.otp_challenge.findUnique({
       where: { challenge_hash: hashValue(verificationToken) },
     });
