@@ -19,6 +19,12 @@ export const JWT_EXPIRATION = process.env.JWT_EXPIRATION || '30m';
 export const REFRESH_TOKEN_EXPIRATION_DAYS = Number(
   process.env.REFRESH_TOKEN_EXPIRATION_DAYS || 30
 );
+// Created by AI.
+export const OTP_EMAIL_FROM = process.env.OTP_EMAIL_FROM || 'no-reply@fiscalize.local';
+export const RESEND_API_KEY = process.env.RESEND_API_KEY;
+export const OTP_EXPIRATION_MINUTES = 5;
+export const OTP_RESEND_COOLDOWN_SECONDS = 60;
+export const MFA_VERIFICATION_EXPIRATION_MINUTES = 10;
 
 export const PORT = Number(process.env.PORT) || 3000;
 

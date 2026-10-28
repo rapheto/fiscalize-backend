@@ -141,12 +141,29 @@ O arquivo `.env.example` é a referência completa e comentada. Resumo:
 | `PORT` | `3000` | Porta HTTP do Express (em produção a Railway define automaticamente) |
 | `JWT_EXPIRATION` | `30m` | Validade curta do JWT de acesso (mantenha entre 15 e 60 minutos) |
 | `REFRESH_TOKEN_EXPIRATION_DAYS` | `30` | Validade do refresh token; cada renovação revoga o token anterior |
+| `OTP_EMAIL_FROM` | `no-reply@fiscalize.local` | Remetente usado no envio dos códigos MFA |
+| `RESEND_API_KEY` | — | Chave do Resend para entrega de OTP por e-mail; obrigatória em produção |
 | `REDIS_URL` | — | Cache de métricas. Se ausente ou indisponível, a aplicação continua funcionando sem cache |
 | `CRON_METRICS_SCHEDULE` | `0 * * * *` | Expressão cron do job de consolidação de métricas |
 | `FRONTEND_URL` | `http://localhost:3001` | Origem extra liberada no CORS durante o desenvolvimento |
 | `SEED_ADMIN_EMAIL` | `admin@fiscalize.gov.br` | Email do admin criado pelo seed |
 | `SEED_ADMIN_PASSWORD` | `Admin@123456` | Senha do admin criado pelo seed |
 | `SEED_ADMIN_NAME` | `Administrador` | Nome do admin criado pelo seed |
+
+---
+
+### MFA/OTP
+
+O primeiro login em cada dispositivo exige um código de seis dígitos enviado ao
+e-mail cadastrado. O código é válido por cinco minutos, pode ser usado uma vez
+e possui limite de cinco tentativas. A aplicação armazena apenas hashes do
+código e do desafio. As ações críticas (`password`, `export`, `delete` e
+`anonymization`) usam o mesmo fluxo, mas exigem uma verificação adicional
+recente.
+
+Em desenvolvimento, quando `RESEND_API_KEY` não está configurada, o código é
+registrado no log do backend. Em produção, a ausência da chave ou uma falha do
+provedor interrompe a solicitação, sem criar um desafio utilizável.
 
 ---
 

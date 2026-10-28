@@ -3,6 +3,7 @@ import { authService } from '../services/authService';
 import { AppError } from '../middlewares/errorMiddleware';
 import { AuthRequest } from '../middlewares/authMiddleware';
 import { assertPasswordPolicy } from '../utils/passwordPolicy';
+import { OTP_PURPOSE, type CriticalAction } from '../services/otpService';
 
 export const authController = {
   // Created by AI.
@@ -39,22 +40,85 @@ export const authController = {
   // Updated by AI.
   async login(req: Request, res: Response, next: NextFunction) {
     try {
-      const { email, senha } = req.body;
+      const { email, senha, deviceId, deviceName } = req.body;
       
       // Validação de campos obrigatórios
       if (!email || !senha) {
         throw new AppError(400, 'Campos obrigatórios: email, senha');
       }
       
-      const { usuario, token, refreshToken } = await authService.login(email, senha);
+      if (!deviceId || typeof deviceId !== 'string') {
+        throw new AppError(400, 'Identificador do dispositivo obrigatório.');
+      }
+
+      const result = await authService.login(email, senha, deviceId, deviceName);
+      if (result.mfaRequired) {
+        res.status(200).json({
+          mfaRequired: true,
+          challengeToken: result.challengeToken,
+          destination: result.destination,
+        });
+        return;
+      }
 
       res.status(200).json({
-        id: usuario.id,
-        nome: usuario.nome,
-        email: usuario.email,
-        perfil: usuario.perfil,
-        token,
-        refreshToken,
+        id: result.usuario.id,
+        nome: result.usuario.nome,
+        email: result.usuario.email,
+        perfil: result.usuario.perfil,
+        token: result.token,
+        refreshToken: result.refreshToken,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Created by AI.
+  async requestCriticalOtp(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { action } = req.body as { action?: CriticalAction };
+      const allowed: CriticalAction[] = ['password', 'export', 'delete', 'anonymization'];
+      if (!action || !allowed.includes(action)) {
+        throw new AppError(400, 'Ação crítica inválida.');
+      }
+      const challenge = await authService.createOtpChallenge(
+        req.user!.id,
+        OTP_PURPOSE.CRITICAL,
+        action
+      );
+      res.status(200).json({
+        challengeToken: challenge.challengeToken,
+        destination: challenge.destination,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Created by AI.
+  async verifyOtp(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { challengeToken, code, deviceId } = req.body;
+      if (
+        typeof challengeToken !== 'string' ||
+        typeof code !== 'string' ||
+        !/^\d{6}$/.test(code)
+      ) {
+        throw new AppError(400, 'Informe o token do desafio e um código de 6 dígitos.');
+      }
+      const result = await authService.verifyOtp(challengeToken, code, deviceId);
+      if ('verificationToken' in result) {
+        res.status(200).json({ verificationToken: result.verificationToken });
+        return;
+      }
+      res.status(200).json({
+        id: result.usuario.id,
+        nome: result.usuario.nome,
+        email: result.usuario.email,
+        perfil: result.usuario.perfil,
+        token: result.token,
+        refreshToken: result.refreshToken,
       });
     } catch (error) {
       next(error);
@@ -175,6 +239,7 @@ export const authController = {
   async changePassword(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { senhaAtual, novaSenha, confirmarNovaSenha } = req.body;
+      await authService.consumeMfaVerification(req.user!.id, req.body.mfaToken, 'password');
       if (!senhaAtual || !novaSenha || !confirmarNovaSenha) {
         throw new AppError(400, 'Informe a senha atual, a nova senha e a confirmação.');
       }
@@ -193,6 +258,7 @@ export const authController = {
   // Created by AI.
   async exportMe(req: AuthRequest, res: Response, next: NextFunction) {
     try {
+      await authService.consumeMfaVerification(req.user!.id, req.body?.mfaToken, 'export');
       const data = await authService.exportPersonalData(req.user!.id);
       res.status(200).json({
         exportedAt: new Date().toISOString(),
@@ -219,6 +285,7 @@ export const authController = {
   async deleteMe(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { senha, mode } = req.body;
+      await authService.consumeMfaVerification(req.user!.id, req.body.mfaToken, mode === 'delete' ? 'delete' : 'anonymization');
       if (!senha || !['delete', 'anonymize'].includes(mode)) {
         throw new AppError(400, 'Informe senha e mode (delete ou anonymize).');
       }
@@ -238,6 +305,7 @@ export const authController = {
       if (typeof enabled !== 'boolean') {
         throw new AppError(400, 'Informe enabled como booleano.');
       }
+      await authService.consumeMfaVerification(req.user!.id, req.body.mfaToken, 'anonymization');
       await authService.setAnonymization(req.user!.id, enabled, senha);
       res.status(204).send();
     } catch (error) {

@@ -269,6 +269,8 @@ model usuario {
   audit_logs    audit_logs[]  @relation("audit_logs_admin")
   // Updated by AI.
   refresh_tokens refresh_token[]
+  dispositivos usuario_dispositivo[]
+  otp_challenges otp_challenge[]
 
   @@index([criadoem(sort: Desc)], map: "idx_usuario_criadoem")
   @@index([email], map: "idx_usuario_email")
@@ -290,6 +292,45 @@ model refresh_token {
   @@index([usuario_id])
   @@index([expires_at])
   @@map("refresh_tokens")
+}
+
+// Created by AI.
+model usuario_dispositivo {
+  id            String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  usuario_id    String   @db.Uuid
+  device_hash   String   @db.VarChar(64)
+  device_name   String?  @db.VarChar(120)
+  trusted       Boolean  @default(true)
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  last_used_at  DateTime @default(now()) @db.Timestamptz(6)
+  usuario       usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@unique([usuario_id, device_hash])
+  @@index([usuario_id])
+  @@map("usuario_dispositivos")
+}
+
+// Created by AI.
+model otp_challenge {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  usuario_id      String    @db.Uuid
+  challenge_hash  String    @unique @db.VarChar(64)
+  code_hash       String    @db.VarChar(64)
+  purpose         String    @db.VarChar(32)
+  action          String?   @db.VarChar(32)
+  device_hash     String?   @db.VarChar(64)
+  device_name     String?   @db.VarChar(120)
+  destination     String    @db.VarChar(160)
+  attempts        Int       @default(0)
+  expires_at      DateTime  @db.Timestamptz(6)
+  verified_at     DateTime?
+  consumed_at     DateTime?
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  usuario         usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@index([usuario_id, purpose, created_at])
+  @@index([expires_at])
+  @@map("otp_challenges")
 }
 
 model routing_rules {

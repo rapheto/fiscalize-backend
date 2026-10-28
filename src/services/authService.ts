@@ -10,6 +10,20 @@ import {
   REFRESH_TOKEN_EXPIRATION_DAYS,
 } from '../config/env';
 import { assertPasswordPolicy } from '../utils/passwordPolicy';
+import {
+  createChallengeToken,
+  createOtpCode,
+  deliverEmailOtp,
+  hashValue,
+  maskEmail,
+  OTP_PURPOSE,
+  type CriticalAction,
+} from './otpService';
+import {
+  MFA_VERIFICATION_EXPIRATION_MINUTES,
+  OTP_EXPIRATION_MINUTES,
+  OTP_RESEND_COOLDOWN_SECONDS,
+} from '../config/env';
 
 // Blocklist em memória (em produção: Redis)
 const tokenBlocklist = new Set<string>();
@@ -27,6 +41,34 @@ const REFRESH_TOKEN_BYTES = 32;
 
 function hashRefreshToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
+}
+
+// Created by AI.
+function hashDeviceId(deviceId: string): string {
+  return hashValue(deviceId.trim());
+}
+
+// Created by AI.
+async function issueSession(usuario: {
+  id: string;
+  email: string;
+  nome: string;
+  perfil: any;
+}) {
+  const token = jwt.sign(
+    { id: usuario.id, email: usuario.email, perfil: usuario.perfil },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRATION } as SignOptions
+  );
+  const refreshToken = randomBytes(REFRESH_TOKEN_BYTES).toString('base64url');
+  await prisma.refresh_token.create({
+    data: {
+      token_hash: hashRefreshToken(refreshToken),
+      usuario_id: usuario.id,
+      expires_at: createRefreshTokenExpiry(),
+    },
+  });
+  return { usuario, token, refreshToken };
 }
 
 function createRefreshTokenExpiry(): Date {
@@ -100,7 +142,7 @@ export const authService = {
 
   // Created by AI.
   // Updated by AI.
-  async login(email: string, senha: string) {
+  async login(email: string, senha: string, deviceId: string, deviceName?: string) {
     const usuario = await prisma.usuario.findUnique({
       where: { email },
     });
@@ -172,26 +214,169 @@ export const authService = {
       });
     }
 
-    const token = jwt.sign(
-      {
-        id: usuario.id,
-        email: usuario.email,
-        perfil: usuario.perfil,
-      },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRATION } as SignOptions
-    );
+    const deviceHash = hashDeviceId(deviceId);
+    const device = await prisma.usuario_dispositivo.findUnique({
+      where: { usuario_id_device_hash: { usuario_id: usuario.id, device_hash: deviceHash } },
+    });
 
-    const refreshToken = randomBytes(REFRESH_TOKEN_BYTES).toString('base64url');
-    await prisma.refresh_token.create({
+    if (!device || !device.trusted) {
+      const challenge = await this.createOtpChallenge(
+        usuario.id,
+        OTP_PURPOSE.LOGIN,
+        undefined,
+        deviceHash,
+        deviceName
+      );
+      return {
+        mfaRequired: true as const,
+        challengeToken: challenge.challengeToken,
+        destination: challenge.destination,
+        usuario,
+      };
+    }
+
+    await prisma.usuario_dispositivo.update({
+      where: { id: device.id },
+      data: { last_used_at: new Date(), device_name: deviceName ?? device.device_name },
+    });
+    return { mfaRequired: false as const, ...(await issueSession(usuario)) };
+  },
+
+  // Created by AI.
+  async createOtpChallenge(
+    userId: string,
+    purpose: (typeof OTP_PURPOSE)[keyof typeof OTP_PURPOSE],
+    action?: CriticalAction,
+    deviceHash?: string,
+    deviceName?: string
+  ) {
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    if (!usuario) throw new AppError(404, 'Usuário não encontrado.');
+
+    const recent = await prisma.otp_challenge.findFirst({
+      where: {
+        usuario_id: userId,
+        purpose,
+        created_at: { gt: new Date(Date.now() - OTP_RESEND_COOLDOWN_SECONDS * 1000) },
+        consumed_at: null,
+      },
+      orderBy: { created_at: 'desc' },
+    });
+    if (recent) throw new AppError(429, 'Aguarde antes de solicitar um novo código.');
+
+    const code = createOtpCode();
+    const challengeToken = createChallengeToken();
+    const challenge = await prisma.otp_challenge.create({
       data: {
-        token_hash: hashRefreshToken(refreshToken),
-        usuario_id: usuario.id,
-        expires_at: createRefreshTokenExpiry(),
+        usuario_id: userId,
+        challenge_hash: hashValue(challengeToken),
+        code_hash: hashValue(code),
+        purpose,
+        ...(action !== undefined && { action }),
+        ...(deviceHash !== undefined && { device_hash: deviceHash }),
+        ...(deviceName !== undefined && { device_name: deviceName }),
+        destination: maskEmail(usuario.email),
+        expires_at: new Date(Date.now() + OTP_EXPIRATION_MINUTES * 60 * 1000),
       },
     });
 
-    return { usuario, token, refreshToken };
+    try {
+      await deliverEmailOtp(usuario.email, code, purpose);
+    } catch (error) {
+      await prisma.otp_challenge.delete({ where: { id: challenge.id } });
+      throw error;
+    }
+    return { challengeToken, destination: challenge.destination };
+  },
+
+  // Created by AI.
+  async verifyOtp(
+    challengeToken: string,
+    code: string,
+    deviceId?: string
+  ) {
+    const challenge = await prisma.otp_challenge.findUnique({
+      where: { challenge_hash: hashValue(challengeToken) },
+      include: { usuario: true },
+    });
+    if (
+      !challenge ||
+      challenge.consumed_at ||
+      challenge.expires_at <= new Date() ||
+      challenge.attempts >= 5
+    ) {
+      throw new AppError(401, 'Código temporário inválido ou expirado.');
+    }
+
+    if (hashValue(code) !== challenge.code_hash) {
+      const attempts = challenge.attempts + 1;
+      await prisma.otp_challenge.update({
+        where: { id: challenge.id },
+        data: { attempts, ...(attempts >= 5 ? { consumed_at: new Date() } : {}) },
+      });
+      throw new AppError(401, 'Código temporário inválido.');
+    }
+
+    await prisma.otp_challenge.update({
+      where: { id: challenge.id },
+      data: { verified_at: new Date(), consumed_at: challenge.purpose === OTP_PURPOSE.LOGIN ? new Date() : null },
+    });
+
+    if (challenge.purpose === OTP_PURPOSE.CRITICAL) {
+      return {
+        purpose: challenge.purpose,
+        verificationToken: challengeToken,
+        usuario: challenge.usuario,
+      };
+    }
+
+    if (!challenge.device_hash || !deviceId || hashDeviceId(deviceId) !== challenge.device_hash) {
+      throw new AppError(400, 'Dispositivo inválido para esta solicitação.');
+    }
+    await prisma.usuario_dispositivo.upsert({
+      where: {
+        usuario_id_device_hash: {
+          usuario_id: challenge.usuario_id,
+          device_hash: challenge.device_hash,
+        },
+      },
+      create: {
+        usuario_id: challenge.usuario_id,
+        device_hash: challenge.device_hash,
+        device_name: challenge.device_name,
+      },
+      update: {
+        trusted: true,
+        last_used_at: new Date(),
+        device_name: challenge.device_name,
+      },
+    });
+    return { purpose: challenge.purpose, ...(await issueSession(challenge.usuario)) };
+  },
+
+  // Created by AI.
+  async consumeMfaVerification(userId: string, verificationToken: string, action: CriticalAction) {
+    const challenge = await prisma.otp_challenge.findUnique({
+      where: { challenge_hash: hashValue(verificationToken) },
+    });
+    if (
+      !challenge ||
+      challenge.usuario_id !== userId ||
+      challenge.purpose !== OTP_PURPOSE.CRITICAL ||
+      challenge.action !== action ||
+      !challenge.verified_at ||
+      challenge.consumed_at ||
+      challenge.verified_at.getTime() < Date.now() - MFA_VERIFICATION_EXPIRATION_MINUTES * 60 * 1000
+    ) {
+      throw new AppError(401, 'Verificação adicional obrigatória ou expirada.');
+    }
+    await prisma.otp_challenge.update({
+      where: { id: challenge.id },
+      data: { consumed_at: new Date() },
+    });
   },
 
   // Created by AI.
