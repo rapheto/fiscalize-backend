@@ -141,8 +141,9 @@ O arquivo `.env.example` é a referência completa e comentada. Resumo:
 | `PORT` | `3000` | Porta HTTP do Express (em produção a Railway define automaticamente) |
 | `JWT_EXPIRATION` | `30m` | Validade curta do JWT de acesso (mantenha entre 15 e 60 minutos) |
 | `REFRESH_TOKEN_EXPIRATION_DAYS` | `30` | Validade do refresh token; cada renovação revoga o token anterior |
-| `OTP_EMAIL_FROM` | `no-reply@fiscalize.local` | Remetente usado no envio dos códigos MFA |
-| `RESEND_API_KEY` | — | Chave do Resend para entrega de OTP por e-mail; obrigatória em produção |
+| `OTP_EMAIL_FROM` | `GMAIL_USER` | Remetente usado no envio dos códigos MFA. Em produção não pode ser `*.local` |
+| `GMAIL_USER` | — | Conta Gmail usada como remetente e autenticação SMTP |
+| `GMAIL_APP_PASSWORD` | — | Senha de app do Gmail (16 caracteres). Exige 2FA ativa; não use a senha da conta |
 | `REDIS_URL` | — | Cache de métricas. Se ausente ou indisponível, a aplicação continua funcionando sem cache |
 | `CRON_METRICS_SCHEDULE` | `0 * * * *` | Expressão cron do job de consolidação de métricas |
 | `FRONTEND_URL` | `http://localhost:3001` | Origem extra liberada no CORS durante o desenvolvimento |
@@ -161,9 +162,19 @@ código e do desafio. As ações críticas (`password`, `export`, `delete` e
 `anonymization`) usam o mesmo fluxo, mas exigem uma verificação adicional
 recente.
 
-Em desenvolvimento, quando `RESEND_API_KEY` não está configurada, o código é
-registrado no log do backend. Em produção, a ausência da chave ou uma falha do
-provedor interrompe a solicitação, sem criar um desafio utilizável.
+O envio usa o SMTP do Gmail (`smtp.gmail.com:587`), gratuito e sem domínio
+próprio. É preciso configurar `GMAIL_USER` e `GMAIL_APP_PASSWORD` — uma senha de
+app de 16 caracteres, que exige verificação em duas etapas ativa na conta. O
+remetente é o próprio Gmail (`OTP_EMAIL_FROM` vazio herda `GMAIL_USER`).
+
+Limites do Google: 500 destinatários por dia, e o uso automatizado pode
+bloquear a conta — adequado para desenvolvimento e demonstração, não para
+volume de produção.
+
+Em desenvolvimento, quando as credenciais não estão configuradas, o código é
+registrado no log do backend. Em produção, a ausência das credenciais ou um
+remetente inválido impede a inicialização do servidor, e uma falha do Gmail
+interrompe a solicitação sem criar um desafio utilizável.
 
 ---
 

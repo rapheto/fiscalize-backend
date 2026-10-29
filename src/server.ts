@@ -13,7 +13,8 @@ import { createCorsMiddleware } from './config/cors';
 import { healthCheckHandler } from './config/health';
 import { connectPrisma, disconnectPrisma } from './config/prisma';
 import { isRedisAvailable } from './config/redis';
-import { NODE_ENV, PORT } from './config/env';
+// Updated by AI.
+import { GMAIL_USER, NODE_ENV, PORT, assertEmailTransportConfigured } from './config/env';
 import { openApiSpec, swaggerHtml } from './config/swagger';
 import 'dotenv/config';
 
@@ -48,7 +49,9 @@ app.use('/metrics', metricsRoutes);
 
 app.use(errorHandler);
 
+// Updated by AI.
 async function startServer(): Promise<void> {
+  assertEmailTransportConfigured();
   await connectPrisma();
 
   const redisAvailable = await isRedisAvailable();
@@ -56,6 +59,7 @@ async function startServer(): Promise<void> {
   const server = app.listen(PORT, () => {
     console.log(`[Server] Running on port ${PORT}`);
     console.log(`[Server] NODE_ENV=${NODE_ENV}`);
+    console.log(`[Server] MFA email: ${GMAIL_USER ? 'gmail' : 'none (dev log only)'}`);
     console.log(`[Server] Redis: ${redisAvailable ? 'available' : 'unavailable'}`);
     console.log(`[Server] Health check: http://localhost:${PORT}/health`);
     console.log(`[Server] API docs (Swagger): http://localhost:${PORT}/docs`);
