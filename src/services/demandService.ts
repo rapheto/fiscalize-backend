@@ -1,7 +1,7 @@
 import { prisma } from '../config/prisma';
 import { AppError } from '../middlewares/errorMiddleware';
 import { invalidateMetricsCache } from '../utils/cache';
-import { status_chamado } from '@prisma/client';
+import { prioridade, status_chamado } from '@prisma/client';
 
 const STATUS_DISPLAY: Record<status_chamado, string> = {
   Aberto: 'Aberto',
@@ -12,8 +12,21 @@ const STATUS_DISPLAY: Record<status_chamado, string> = {
   Fechado: 'Fechado',
 };
 
+// Created by AI.
+const PRIORITY_DISPLAY: Record<prioridade, string> = {
+  Baixa: 'Baixa',
+  Media: 'Média',
+  Alta: 'Alta',
+  Critica: 'Crítica',
+};
+
 function displayStatus(s: status_chamado): string {
   return STATUS_DISPLAY[s] ?? s;
+}
+
+// Created by AI.
+function displayPriority(p: prioridade): string {
+  return PRIORITY_DISPLAY[p] ?? p;
 }
 
 interface UpdateDemandInput {
@@ -120,17 +133,26 @@ export const demandService = {
     };
   },
 
+  // Updated by AI.
   async findById(id: string, userId: string, perfil: string) {
     const chamado = await prisma.chamado.findUnique({
       where: { id },
       include: {
         categoria: { select: { id: true, nome: true } },
+        orgao: { select: { id: true, nome: true, sigla: true } },
         cidadao: {
           include: { usuario: { select: { id: true, nome: true, email: true } } },
         },
         timeline_event: {
           orderBy: { timestamp: 'asc' },
-          select: { tipo: true, titulo: true, descricao: true, autor: true, timestamp: true },
+          select: {
+            id: true,
+            tipo: true,
+            titulo: true,
+            descricao: true,
+            autor: true,
+            timestamp: true,
+          },
         },
       },
     });
@@ -154,6 +176,20 @@ export const demandService = {
       creator: chamado.cidadao.usuario,
       createdAt: chamado.criadoem,
       updatedAt: chamado.atualizadoem,
+      assignedOrg: chamado.orgao
+        ? {
+            id: chamado.orgao.id,
+            nome: chamado.orgao.nome,
+            sigla: chamado.orgao.sigla,
+          }
+        : null,
+      priority: displayPriority(chamado.prioridade),
+      slaHours: chamado.slahoras,
+      slaDeadline: chamado.sladeadline,
+      slaJustification: chamado.slajustification,
+      photoUrl: chamado.fotourl,
+      resolutionNote: chamado.resolutionnote,
+      resolutionPhotoUrl: chamado.resolutionphotourl,
       logs: chamado.timeline_event,
     };
   },
