@@ -195,6 +195,7 @@ export const authController = {
 
       // Busca os dados completos do usuário do banco
       const usuario = await authService.getUserById(usuarioId);
+      const { data_nascimento, ...cidadao } = usuario.cidadao ?? {};
 
       res.status(200).json({
         id: usuario.id,
@@ -203,7 +204,8 @@ export const authController = {
         perfil: usuario.perfil,
         status: usuario.status,
         criadoem: usuario.criadoem,
-        ...usuario.cidadao,
+        ...cidadao,
+        dataNascimento: data_nascimento,
       });
     } catch (error) {
       next(error);
@@ -234,10 +236,12 @@ export const authController = {
         cep: cep ? String(cep).trim() : null,
         complemento: complemento ? String(complemento).trim() : null,
       });
+      const { data_nascimento, ...cidadao } = usuario.cidadao ?? {};
 
       res.status(200).json({
         ...usuario,
-        ...usuario.cidadao,
+        ...cidadao,
+        dataNascimento: data_nascimento,
       });
     } catch (error) {
       next(error);

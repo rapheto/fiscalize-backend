@@ -498,7 +498,7 @@ export const authService = {
         criadoem: true,
         cidadao: {
           select: {
-            cpf: true, rua: true, numero: true, bairro: true, cidade: true,
+            cpf: true, data_nascimento: true, rua: true, numero: true, bairro: true, cidade: true,
             estado: true, cep: true, complemento: true, endereco: true,
             anonimizar_dados: true,
           },
@@ -514,6 +514,7 @@ export const authService = {
   },
 
   // Created by AI.
+  // Updated by AI.
   async updateProfile(userId: string, data: {
     nome: string;
     email: string;
@@ -567,7 +568,7 @@ export const authService = {
         criadoem: true,
         cidadao: {
           select: {
-            cpf: true, rua: true, numero: true, bairro: true, cidade: true,
+            cpf: true, data_nascimento: true, rua: true, numero: true, bairro: true, cidade: true,
             estado: true, cep: true, complemento: true, endereco: true,
             anonimizar_dados: true,
           },
