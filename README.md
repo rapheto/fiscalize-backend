@@ -194,6 +194,12 @@ Em produção, o Redis deve estar configurado para que os contadores sejam
 compartilhados entre instâncias. `TRUST_PROXY` deve corresponder à topologia
 real do provedor, evitando confiar cegamente em `X-Forwarded-For`.
 
+Na suíte de testes de API, execute o backend com `NODE_ENV=test` ou
+`TRUST_PROXY=1`. A suíte injeta um IP sintético diferente por cenário para
+impedir que os contadores de um teste contaminem outro. Essa configuração é
+exclusiva do ambiente de testes e não deve ser usada para mascarar a topologia
+real em produção.
+
 Esse controle protege a aplicação contra abuso e excesso de requisições, mas
 não substitui WAF, CDN ou proteção anti-DDoS do provedor. Essas camadas externas
 devem ser comprovadas separadamente por configuração, evidência do provedor e

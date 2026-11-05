@@ -49,7 +49,9 @@ export const MFA_VERIFICATION_EXPIRATION_MINUTES = 10;
 
 export const PORT = Number(process.env.PORT) || 3000;
 // Created by AI.
-export const TRUST_PROXY = process.env.TRUST_PROXY || (isProduction ? '1' : '0');
+// Updated by AI.
+export const TRUST_PROXY =
+  process.env.TRUST_PROXY || (NODE_ENV === 'test' || isProduction ? '1' : '0');
 
 // Created by AI.
 function positiveIntegerEnv(name: string, fallback: number): number {
