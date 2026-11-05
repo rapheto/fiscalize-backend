@@ -1,9 +1,24 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { AuthRequest } from '../middlewares/authMiddleware';
 import { demandService } from '../services/demandService';
 import { AppError } from '../middlewares/errorMiddleware';
 
 export const demandController = {
+  // Created by AI.
+  async listPublic(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { status, page, limit } = req.query;
+      const result = await demandService.listPublic(
+        page ? Math.max(1, Number(page)) : 1,
+        limit ? Math.min(100, Math.max(1, Number(limit))) : 20,
+        status ? String(status) : undefined,
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+
   // Created by AI.
   async listOrganizations(req: AuthRequest, res: Response, next: NextFunction) {
     try {

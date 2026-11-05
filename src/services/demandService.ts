@@ -64,6 +64,20 @@ interface ListDemandsInput {
   limit: number;
 }
 
+// Created by AI.
+export type PublicDemand = {
+  id: string;
+  protocolo: string;
+  title: string;
+  description: string;
+  status: string;
+  category: { id: number; nome: string };
+  photoUrl: string | null;
+  latitude: number;
+  longitude: number;
+  createdAt: Date;
+};
+
 const BLOCKED_STATUSES = ['Em_Andamento', 'Resolvido', 'Fechado'] as const;
 
 interface CreateDemandInput {
@@ -98,6 +112,54 @@ async function resolveOrgan(categoryId: number): Promise<string | null> {
 
 // Updated by AI.
 export const demandService = {
+  // Created by AI.
+  async listPublic(page: number, limit: number, status?: string) {
+    const normalizedStatus = status ? STATUS_QUERY_VALUES[status] : undefined;
+    const where = normalizedStatus ? { status: normalizedStatus } : {};
+    const [chamados, total] = await Promise.all([
+      prisma.chamado.findMany({
+        where,
+        select: {
+          id: true,
+          protocolo: true,
+          subcategoria: true,
+          descricao: true,
+          status: true,
+          fotourl: true,
+          latitude: true,
+          longitude: true,
+          criadoem: true,
+          categoria: { select: { id: true, nome: true } },
+        },
+        orderBy: { criadoem: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.chamado.count({ where }),
+    ]);
+
+    const data: PublicDemand[] = chamados.map((chamado) => ({
+      id: chamado.id,
+      protocolo: chamado.protocolo,
+      title: chamado.subcategoria,
+      description: chamado.descricao,
+      status: displayStatus(chamado.status),
+      category: chamado.categoria,
+      photoUrl: chamado.fotourl,
+      latitude: Number(chamado.latitude),
+      longitude: Number(chamado.longitude),
+      createdAt: chamado.criadoem,
+    }));
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  },
+
   async list(input: ListDemandsInput) {
     const { userId, perfil, status, categoria, regiao, orgao, ordenacao, page, limit } = input;
 

@@ -126,6 +126,31 @@ export const openApiSpec = {
           limit: { type: 'integer', example: 20 },
           totalPages: { type: 'integer', example: 3 },
         },
+        PublicDemand: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            protocolo: { type: 'string' },
+            title: { type: 'string' },
+            description: { type: 'string' },
+            status: { $ref: '#/components/schemas/StatusChamado' },
+            category: { $ref: '#/components/schemas/Category' },
+            photoUrl: { type: 'string', nullable: true },
+            latitude: { type: 'number', format: 'double' },
+            longitude: { type: 'number', format: 'double' },
+            createdAt: { type: 'string', format: 'date-time' },
+          },
+        },
+        PublicDemandList: {
+          type: 'object',
+          properties: {
+            data: { type: 'array', items: { $ref: '#/components/schemas/PublicDemand' } },
+            total: { type: 'integer' },
+            page: { type: 'integer' },
+            limit: { type: 'integer' },
+            totalPages: { type: 'integer' },
+          },
+        },
       },
       Organ: {
         type: 'object',
@@ -408,6 +433,24 @@ export const openApiSpec = {
     },
 
     /* ===================== DEMANDS ===================== */
+    '/demands/public': {
+      get: {
+        tags: ['Demands'],
+        summary: 'Listar ocorrências com projeção pública anonimizada',
+        security: [],
+        parameters: [
+          { name: 'status', in: 'query', schema: { type: 'string' } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 20, maximum: 100 } },
+        ],
+        responses: {
+          200: {
+            description: 'Lista pública sem dados pessoais do denunciante',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/PublicDemandList' } } },
+          },
+        },
+      },
+    },
     // Updated by AI.
     '/demands': {
       get: {

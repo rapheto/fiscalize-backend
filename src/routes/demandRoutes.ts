@@ -8,6 +8,8 @@ const router = Router();
 router.get('/', authenticate, demandController.list);
 // Updated by AI.
 router.get('/organizations', authenticate, demandController.listOrganizations);
+// Created by AI.
+router.get('/public', demandController.listPublic);
 router.post('/', authenticate, requireRole(['Cidadao']), demandController.create);
 router.get('/:id', authenticate, demandController.getById);
 router.put('/:id', authenticate, requireRole(['Cidadao']), demandController.update);
