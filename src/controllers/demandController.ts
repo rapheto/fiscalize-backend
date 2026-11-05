@@ -4,6 +4,16 @@ import { demandService } from '../services/demandService';
 import { AppError } from '../middlewares/errorMiddleware';
 
 export const demandController = {
+  // Created by AI.
+  async listOrganizations(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const organizations = await demandService.listOrganizations(req.user!.id, req.user!.perfil);
+      res.status(200).json(organizations);
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async create(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { title, description, category_id, location, latitude, longitude } = req.body;
@@ -29,7 +39,7 @@ export const demandController = {
   },
   async list(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const { status, categoria, regiao, page, limit } = req.query;
+      const { status, categoria, regiao, orgao, ordenacao, page, limit } = req.query;
 
       const result = await demandService.list({
         userId: req.user!.id,
@@ -37,6 +47,10 @@ export const demandController = {
         ...(status !== undefined && { status: String(status) }),
         ...(categoria !== undefined && { categoria: Number(categoria) }),
         ...(regiao !== undefined && { regiao: String(regiao) }),
+        ...(orgao !== undefined && { orgao: String(orgao) }),
+        ...(ordenacao !== undefined && {
+          ordenacao: String(ordenacao) as 'recent' | 'oldest' | 'priority' | 'sla',
+        }),
         page: page ? Math.max(1, Number(page)) : 1,
         limit: limit ? Math.min(100, Math.max(1, Number(limit))) : 20,
       });

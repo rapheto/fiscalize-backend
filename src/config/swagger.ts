@@ -216,6 +216,7 @@ export const openApiSpec = {
     },
 
     /* ===================== AUTH ===================== */
+    // Updated by AI.
     '/auth/register': {
       post: {
         tags: ['Auth'],
@@ -227,7 +228,7 @@ export const openApiSpec = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['nome', 'email', 'senha', 'cpf', 'rua', 'numero', 'bairro', 'cidade', 'estado', 'cep'],
+                required: ['nome', 'email', 'senha', 'cpf', 'rua', 'numero', 'bairro', 'cidade', 'estado', 'cep', 'privacyPolicyVersion'],
                 properties: {
                   nome: { type: 'string', example: 'Maria Silva' },
                   email: { type: 'string', format: 'email' },
@@ -240,6 +241,7 @@ export const openApiSpec = {
                   estado: { type: 'string', example: 'SP' },
                   cep: { type: 'string', example: '01001000' },
                   complemento: { type: 'string', example: 'Apto 10' },
+                  privacyPolicyVersion: { type: 'string', example: '1.0' },
                 },
               },
             },
@@ -406,6 +408,7 @@ export const openApiSpec = {
     },
 
     /* ===================== DEMANDS ===================== */
+    // Updated by AI.
     '/demands': {
       get: {
         tags: ['Demands'],
@@ -414,7 +417,9 @@ export const openApiSpec = {
         parameters: [
           { name: 'status', in: 'query', schema: { type: 'string' }, description: 'Filtra por status (valor do enum)' },
           { name: 'categoria', in: 'query', schema: { type: 'integer' }, description: 'ID da categoria' },
-          { name: 'regiao', in: 'query', schema: { type: 'string' }, description: 'Busca por trecho do endereço' },
+          { name: 'regiao', in: 'query', schema: { type: 'string' }, description: 'Busca por protocolo ou trecho do endereço' },
+          { name: 'orgao', in: 'query', schema: { type: 'string' }, description: 'ID do órgão responsável' },
+          { name: 'ordenacao', in: 'query', schema: { type: 'string', enum: ['recent', 'oldest', 'priority', 'sla'] }, description: 'Ordenação da listagem' },
           { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
           { name: 'limit', in: 'query', schema: { type: 'integer', default: 20, maximum: 100 } },
         ],
@@ -424,6 +429,20 @@ export const openApiSpec = {
             content: { 'application/json': { schema: { $ref: '#/components/schemas/DemandList' } } },
           },
           401: { $ref: '#/components/responses/Unauthorized' },
+        },
+      },
+      '/demands/organizations': {
+        get: {
+          tags: ['Demands'],
+          summary: 'Listar órgãos das demandas do cidadão',
+          security: BEARER,
+          responses: {
+            200: {
+              description: 'Órgãos disponíveis para filtro',
+              content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/Organ' } } } },
+            },
+            401: { $ref: '#/components/responses/Unauthorized' },
+          },
         },
       },
       post: {

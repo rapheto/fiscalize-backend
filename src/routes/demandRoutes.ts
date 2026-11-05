@@ -6,6 +6,8 @@ import { requireRole } from '../middlewares/requireRole';
 const router = Router();
 
 router.get('/', authenticate, demandController.list);
+// Updated by AI.
+router.get('/organizations', authenticate, demandController.listOrganizations);
 router.post('/', authenticate, requireRole(['Cidadao']), demandController.create);
 router.get('/:id', authenticate, demandController.getById);
 router.put('/:id', authenticate, requireRole(['Cidadao']), demandController.update);

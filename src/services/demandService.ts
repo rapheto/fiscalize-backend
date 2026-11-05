@@ -13,6 +13,18 @@ const STATUS_DISPLAY: Record<status_chamado, string> = {
 };
 
 // Created by AI.
+const STATUS_QUERY_VALUES: Record<string, status_chamado> = {
+  Aberto: 'Aberto',
+  'Em Análise': 'Em_An_lise',
+  Em_An_lise: 'Em_An_lise',
+  'Em Andamento': 'Em_Andamento',
+  Em_Andamento: 'Em_Andamento',
+  Aguardando: 'Aguardando',
+  Resolvido: 'Resolvido',
+  Fechado: 'Fechado',
+};
+
+// Created by AI.
 const PRIORITY_DISPLAY: Record<prioridade, string> = {
   Baixa: 'Baixa',
   Media: 'Média',
@@ -46,6 +58,8 @@ interface ListDemandsInput {
   status?: string;
   categoria?: number;
   regiao?: string;
+  orgao?: string;
+  ordenacao?: 'recent' | 'oldest' | 'priority' | 'sla';
   page: number;
   limit: number;
 }
@@ -82,19 +96,27 @@ async function resolveOrgan(categoryId: number): Promise<string | null> {
   return rule.organ_id;
 }
 
+// Updated by AI.
 export const demandService = {
   async list(input: ListDemandsInput) {
-    const { userId, perfil, status, categoria, regiao, page, limit } = input;
+    const { userId, perfil, status, categoria, regiao, orgao, ordenacao, page, limit } = input;
 
     const where: Record<string, unknown> = {};
 
     if (perfil === 'Cidadao') where['cidadaoid'] = userId;
-    if (status) where['status'] = status;
+    if (status) where['status'] = STATUS_QUERY_VALUES[status] ?? status;
     if (categoria) where['categoriaid'] = categoria;
-    if (regiao) where['endereco'] = { contains: regiao, mode: 'insensitive' };
+    if (regiao) {
+      where['OR'] = [
+        { endereco: { contains: regiao, mode: 'insensitive' } },
+        { protocolo: { contains: regiao, mode: 'insensitive' } },
+      ];
+    }
+    if (orgao) where['orgaoid'] = orgao;
 
     const include = {
       categoria: { select: { id: true, nome: true } },
+      orgao: { select: { id: true, nome: true, sigla: true } },
       cidadao: {
         include: { usuario: { select: { id: true, nome: true, email: true } } },
       },
@@ -104,7 +126,14 @@ export const demandService = {
       prisma.chamado.findMany({
         where,
         include,
-        orderBy: { criadoem: 'desc' },
+        orderBy:
+          ordenacao === 'oldest'
+            ? { criadoem: 'asc' }
+            : ordenacao === 'priority'
+              ? { prioridade: 'asc' }
+              : ordenacao === 'sla'
+                ? { sladeadline: 'asc' }
+                : { criadoem: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
       }),
@@ -122,6 +151,10 @@ export const demandService = {
         latitude: Number(c.latitude),
         longitude: Number(c.longitude),
         category: c.categoria,
+        assignedOrg: c.orgao
+          ? { id: c.orgao.id, nome: c.orgao.nome, sigla: c.orgao.sigla }
+          : null,
+        priority: displayPriority(c.prioridade),
         creator: c.cidadao.usuario,
         createdAt: c.criadoem,
         updatedAt: c.atualizadoem,
@@ -131,6 +164,18 @@ export const demandService = {
       limit,
       totalPages: Math.ceil(total / limit),
     };
+  },
+
+  // Created by AI.
+  async listOrganizations(userId: string, perfil: string) {
+    const where = perfil === 'Cidadao' ? { cidadaoid: userId } : {};
+    const demands = await prisma.chamado.findMany({
+      where: { ...where, orgaoid: { not: null } },
+      distinct: ['orgaoid'],
+      select: { orgao: { select: { id: true, nome: true, sigla: true } } },
+    });
+
+    return demands.flatMap((demand) => (demand.orgao ? [demand.orgao] : []));
   },
 
   // Updated by AI.

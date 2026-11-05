@@ -4,17 +4,24 @@ import { AppError } from '../middlewares/errorMiddleware';
 import { AuthRequest } from '../middlewares/authMiddleware';
 import { assertPasswordPolicy } from '../utils/passwordPolicy';
 import { OTP_PURPOSE, type CriticalAction } from '../services/otpService';
+import { PRIVACY_POLICY_VERSION } from '../config/privacyPolicy';
 
 export const authController = {
   // Created by AI.
   // Updated by AI.
   async register(req: Request, res: Response, next: NextFunction) {
     try {
-      const { nome, email, senha, cpf, rua, numero, bairro, cidade, estado, cep, complemento } = req.body;
+      const {
+        nome, email, senha, cpf, rua, numero, bairro, cidade, estado, cep, complemento,
+        privacyPolicyVersion,
+      } = req.body;
       
       // Validação de campos obrigatórios
       if (!nome || !email || !senha || !cpf || !rua || !numero || !bairro || !cidade || !estado || !cep) {
         throw new AppError(400, 'Campos obrigatórios: nome, email, senha, cpf e endereço completo');
+      }
+      if (privacyPolicyVersion !== PRIVACY_POLICY_VERSION) {
+        throw new AppError(400, 'É obrigatório aceitar a Política de Privacidade vigente.');
       }
       
       // Validação de formato de email
@@ -29,7 +36,7 @@ export const authController = {
         cpf: String(cpf), rua: String(rua), numero: String(numero), bairro: String(bairro),
         cidade: String(cidade), estado: String(estado).toUpperCase(), cep: String(cep),
         ...(complemento !== undefined && { complemento: String(complemento) }),
-      });
+      }, privacyPolicyVersion);
       
       res.status(201).json({ id: usuario.id, nome: usuario.nome, email: usuario.email, perfil: usuario.perfil });
     } catch (error) {

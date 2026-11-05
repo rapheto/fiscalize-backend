@@ -245,6 +245,7 @@ model timeline_event {
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+// Updated by AI.
 model usuario {
   id            String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   nome          String          @db.VarChar(150)
@@ -271,11 +272,27 @@ model usuario {
   refresh_tokens refresh_token[]
   dispositivos usuario_dispositivo[]
   otp_challenges otp_challenge[]
+  consentimentos_privacidade consentimento_privacidade[]
 
   @@index([criadoem(sort: Desc)], map: "idx_usuario_criadoem")
   @@index([email], map: "idx_usuario_email")
   @@index([perfil], map: "idx_usuario_perfil")
   @@index([status], map: "idx_usuario_status")
+}
+
+// Created by AI.
+model consentimento_privacidade {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  usuario_id  String   @db.Uuid
+  tipo        String   @default("politica_privacidade") @db.VarChar(40)
+  versao      String   @db.VarChar(20)
+  documento   String   @db.VarChar(255)
+  origem      String   @db.VarChar(30)
+  aceito_em   DateTime @default(now()) @db.Timestamptz(6)
+  usuario     usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@index([usuario_id, aceito_em(sort: Desc)])
+  @@map("consentimentos_privacidade")
 }
 
 // Created by AI.

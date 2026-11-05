@@ -9,6 +9,7 @@ import {
   JWT_EXPIRATION,
   REFRESH_TOKEN_EXPIRATION_DAYS,
 } from '../config/env';
+import { PRIVACY_POLICY_DOCUMENT } from '../config/privacyPolicy';
 import { assertPasswordPolicy } from '../utils/passwordPolicy';
 import {
   createChallengeToken,
@@ -94,7 +95,8 @@ export const authService = {
       estado: string;
       cep: string;
       complemento?: string;
-    }
+    },
+    privacyPolicyVersion: string
   ) {
     assertPasswordPolicy(senha);
 
@@ -131,6 +133,15 @@ export const authService = {
           cep: profile.cep,
           complemento: profile.complemento ?? null,
           endereco: `${profile.rua}, ${profile.numero}, ${profile.bairro}, ${profile.cidade} - ${profile.estado}, CEP ${profile.cep}${profile.complemento ? `, ${profile.complemento}` : ''}`,
+        },
+      });
+
+      await tx.consentimento_privacidade.create({
+        data: {
+          usuario_id: created.id,
+          versao: privacyPolicyVersion,
+          documento: PRIVACY_POLICY_DOCUMENT,
+          origem: 'mobile',
         },
       });
 
