@@ -11,6 +11,7 @@ import {
 } from '../config/env';
 import { PRIVACY_POLICY_DOCUMENT } from '../config/privacyPolicy';
 import { assertPasswordPolicy } from '../utils/passwordPolicy';
+import { assertAdultBirthDate } from '../utils/agePolicy';
 import {
   createChallengeToken,
   createOtpCode,
@@ -88,6 +89,7 @@ export const authService = {
     senha: string,
     profile: {
       cpf: string;
+      dataNascimento: string;
       rua: string;
       numero: string;
       bairro: string;
@@ -99,6 +101,7 @@ export const authService = {
     privacyPolicyVersion: string
   ) {
     assertPasswordPolicy(senha);
+    const birthDate = assertAdultBirthDate(profile.dataNascimento);
 
     const usuarioExistente = await prisma.usuario.findUnique({
       where: { email },
@@ -125,6 +128,7 @@ export const authService = {
         data: {
           id: created.id,
           cpf: profile.cpf,
+          data_nascimento: birthDate,
           rua: profile.rua,
           numero: profile.numero,
           bairro: profile.bairro,
@@ -672,8 +676,8 @@ export const authService = {
           status: 'Inativo',
           cidadao: {
             upsert: {
-              create: { cpf: null, rua: null, numero: null, bairro: null, cidade: null, estado: null, cep: null, complemento: null, endereco: null },
-              update: { cpf: null, rua: null, numero: null, bairro: null, cidade: null, estado: null, cep: null, complemento: null, endereco: null },
+              create: { cpf: null, data_nascimento: null, rua: null, numero: null, bairro: null, cidade: null, estado: null, cep: null, complemento: null, endereco: null },
+              update: { cpf: null, data_nascimento: null, rua: null, numero: null, bairro: null, cidade: null, estado: null, cep: null, complemento: null, endereco: null },
             },
 
           },

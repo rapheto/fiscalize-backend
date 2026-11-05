@@ -86,6 +86,8 @@ model chamado {
 model cidadao {
   id          String    @id @db.Uuid
   cpf         String?   @unique @db.VarChar(30)
+  // Updated by AI.
+  data_nascimento DateTime? @db.Date
   rua         String?   @db.VarChar(150)
   numero      String?   @db.VarChar(20)
   bairro      String?   @db.VarChar(100)

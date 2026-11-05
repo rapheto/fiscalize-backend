@@ -5,6 +5,7 @@ import { AuthRequest } from '../middlewares/authMiddleware';
 import { assertPasswordPolicy } from '../utils/passwordPolicy';
 import { OTP_PURPOSE, type CriticalAction } from '../services/otpService';
 import { PRIVACY_POLICY_VERSION } from '../config/privacyPolicy';
+import { assertAdultBirthDate } from '../utils/agePolicy';
 
 export const authController = {
   // Created by AI.
@@ -12,13 +13,13 @@ export const authController = {
   async register(req: Request, res: Response, next: NextFunction) {
     try {
       const {
-        nome, email, senha, cpf, rua, numero, bairro, cidade, estado, cep, complemento,
+        nome, email, senha, cpf, dataNascimento, rua, numero, bairro, cidade, estado, cep, complemento,
         privacyPolicyVersion,
       } = req.body;
       
       // Validação de campos obrigatórios
-      if (!nome || !email || !senha || !cpf || !rua || !numero || !bairro || !cidade || !estado || !cep) {
-        throw new AppError(400, 'Campos obrigatórios: nome, email, senha, cpf e endereço completo');
+      if (!nome || !email || !senha || !cpf || !dataNascimento || !rua || !numero || !bairro || !cidade || !estado || !cep) {
+        throw new AppError(400, 'Campos obrigatórios: nome, email, senha, data de nascimento, cpf e endereço completo');
       }
       if (privacyPolicyVersion !== PRIVACY_POLICY_VERSION) {
         throw new AppError(400, 'É obrigatório aceitar a Política de Privacidade vigente.');
@@ -31,9 +32,10 @@ export const authController = {
       }
       
       assertPasswordPolicy(senha);
+      assertAdultBirthDate(dataNascimento);
       
       const usuario = await authService.register(nome, email, senha, {
-        cpf: String(cpf), rua: String(rua), numero: String(numero), bairro: String(bairro),
+        cpf: String(cpf), dataNascimento: String(dataNascimento), rua: String(rua), numero: String(numero), bairro: String(bairro),
         cidade: String(cidade), estado: String(estado).toUpperCase(), cep: String(cep),
         ...(complemento !== undefined && { complemento: String(complemento) }),
       }, privacyPolicyVersion);

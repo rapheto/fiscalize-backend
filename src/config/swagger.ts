@@ -253,11 +253,12 @@ export const openApiSpec = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['nome', 'email', 'senha', 'cpf', 'rua', 'numero', 'bairro', 'cidade', 'estado', 'cep', 'privacyPolicyVersion'],
+                required: ['nome', 'email', 'senha', 'dataNascimento', 'cpf', 'rua', 'numero', 'bairro', 'cidade', 'estado', 'cep', 'privacyPolicyVersion'],
                 properties: {
                   nome: { type: 'string', example: 'Maria Silva' },
                   email: { type: 'string', format: 'email' },
                   senha: { type: 'string', format: 'password', minLength: 8 },
+                  dataNascimento: { type: 'string', format: 'date', example: '1990-05-20' },
                   cpf: { type: 'string', example: '12345678901' },
                   rua: { type: 'string', example: 'Rua das Flores' },
                   numero: { type: 'string', example: '123' },
