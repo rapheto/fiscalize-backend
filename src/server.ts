@@ -14,15 +14,33 @@ import { healthCheckHandler } from './config/health';
 import { connectPrisma, disconnectPrisma } from './config/prisma';
 import { isRedisAvailable } from './config/redis';
 // Updated by AI.
-import { GMAIL_USER, NODE_ENV, PORT, assertEmailTransportConfigured } from './config/env';
+import {
+  GMAIL_USER,
+  NODE_ENV,
+  PORT,
+  RATE_LIMIT_REDIS_REQUIRED,
+  TRUST_PROXY,
+  assertEmailTransportConfigured,
+} from './config/env';
 import { openApiSpec, swaggerHtml } from './config/swagger';
+// Updated by AI.
+import { generalRateLimiter } from './middlewares/rateLimitMiddleware';
 import 'dotenv/config';
 
 const app = express();
 
+// Updated by AI.
+const trustedProxySetting =
+  TRUST_PROXY === 'true'
+    ? true
+    : /^\d+$/.test(TRUST_PROXY)
+      ? Number(TRUST_PROXY)
+      : TRUST_PROXY;
+app.set('trust proxy', trustedProxySetting);
 app.use(createCorsMiddleware());
 app.use(express.json());
 app.use(cookieParser());
+app.use(generalRateLimiter);
 
 app.get('/health', (req, res) => {
   void healthCheckHandler(req, res);
@@ -55,6 +73,11 @@ async function startServer(): Promise<void> {
   await connectPrisma();
 
   const redisAvailable = await isRedisAvailable();
+  if (RATE_LIMIT_REDIS_REQUIRED && !redisAvailable) {
+    throw new Error(
+      'Redis is required for rate limiting but is unavailable. Configure REDIS_URL and verify connectivity.'
+    );
+  }
 
   const server = app.listen(PORT, () => {
     console.log(`[Server] Running on port ${PORT}`);

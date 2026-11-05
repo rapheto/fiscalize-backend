@@ -3,6 +3,7 @@ import Redis from 'ioredis';
 let client: Redis | null = null;
 let connectionAttempted = false;
 
+// Updated by AI.
 export function getRedisClient(): Redis | null {
   if (connectionAttempted) return client;
   connectionAttempted = true;
@@ -35,6 +36,7 @@ export function getRedisClient(): Redis | null {
   return client;
 }
 
+// Updated by AI.
 export async function isRedisAvailable(): Promise<boolean> {
   const redis = getRedisClient();
   if (!redis) return false;

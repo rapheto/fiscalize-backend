@@ -1,16 +1,28 @@
 import { Router } from 'express';
 import { authController } from '../controllers/authController';
 import { authenticate } from '../middlewares/authMiddleware';
+// Created by AI.
+import {
+  authenticationRateLimiter,
+  otpRateLimiter,
+} from '../middlewares/rateLimitMiddleware';
 
 const router = Router();
 
-router.post('/register', authController.register);
-router.post('/login', authController.login);
+// Updated by AI.
+router.post('/register', authenticationRateLimiter, authController.register);
+// Updated by AI.
+router.post('/login', authenticationRateLimiter, authController.login);
 // Created by AI.
-router.post('/2fa/verify', authController.verifyOtp);
-router.post('/2fa/request-critical', authenticate, authController.requestCriticalOtp);
+router.post('/2fa/verify', otpRateLimiter, authController.verifyOtp);
+router.post(
+  '/2fa/request-critical',
+  otpRateLimiter,
+  authenticate,
+  authController.requestCriticalOtp
+);
 // Created by AI.
-router.post('/refresh', authController.refresh);
+router.post('/refresh', authenticationRateLimiter, authController.refresh);
 // Updated by AI.
 router.post('/logout', authenticate, authController.logout);
 router.get('/me', authenticate, authController.me);

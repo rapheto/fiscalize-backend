@@ -48,6 +48,40 @@ export const OTP_RESEND_COOLDOWN_SECONDS = 60;
 export const MFA_VERIFICATION_EXPIRATION_MINUTES = 10;
 
 export const PORT = Number(process.env.PORT) || 3000;
+// Created by AI.
+export const TRUST_PROXY = process.env.TRUST_PROXY || (isProduction ? '1' : '0');
+
+// Created by AI.
+function positiveIntegerEnv(name: string, fallback: number): number {
+  const value = Number(process.env[name] || fallback);
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+  return value;
+}
+
+// Created by AI.
+export const RATE_LIMIT_GENERAL_MAX = positiveIntegerEnv(
+  'RATE_LIMIT_GENERAL_MAX',
+  100
+);
+// Created by AI.
+export const RATE_LIMIT_AUTH_MAX = positiveIntegerEnv('RATE_LIMIT_AUTH_MAX', 10);
+// Created by AI.
+export const RATE_LIMIT_OTP_MAX = positiveIntegerEnv('RATE_LIMIT_OTP_MAX', 5);
+// Created by AI.
+export const RATE_LIMIT_DEMAND_MAX = positiveIntegerEnv(
+  'RATE_LIMIT_DEMAND_MAX',
+  10
+);
+// Created by AI.
+export const RATE_LIMIT_WINDOW_MS = positiveIntegerEnv(
+  'RATE_LIMIT_WINDOW_MS',
+  60_000
+);
+// Created by AI.
+export const RATE_LIMIT_REDIS_REQUIRED =
+  process.env.RATE_LIMIT_REDIS_REQUIRED === 'true' || isProduction;
 
 export function getAllowedOrigins(): string[] {
   const fromEnv = (process.env.ALLOWED_ORIGINS ?? '')

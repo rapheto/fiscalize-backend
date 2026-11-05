@@ -144,7 +144,14 @@ O arquivo `.env.example` é a referência completa e comentada. Resumo:
 | `OTP_EMAIL_FROM` | `GMAIL_USER` | Remetente usado no envio dos códigos MFA. Em produção não pode ser `*.local` |
 | `GMAIL_USER` | — | Conta Gmail usada como remetente e autenticação SMTP |
 | `GMAIL_APP_PASSWORD` | — | Senha de app do Gmail (16 caracteres). Exige 2FA ativa; não use a senha da conta |
-| `REDIS_URL` | — | Cache de métricas. Se ausente ou indisponível, a aplicação continua funcionando sem cache |
+| `REDIS_URL` | — | Cache de métricas e armazenamento compartilhado dos contadores de rate limiting |
+| `RATE_LIMIT_REDIS_REQUIRED` | `false` fora de produção | Exige Redis para os contadores distribuídos de rate limiting |
+| `RATE_LIMIT_GENERAL_MAX` | `100` | Requisições por janela nas rotas gerais |
+| `RATE_LIMIT_AUTH_MAX` | `10` | Requisições por janela nas rotas de autenticação |
+| `RATE_LIMIT_OTP_MAX` | `5` | Requisições por janela nas rotas de OTP |
+| `RATE_LIMIT_DEMAND_MAX` | `10` | Requisições por janela na submissão de denúncias |
+| `RATE_LIMIT_WINDOW_MS` | `60000` | Duração da janela de rate limiting em milissegundos |
+| `TRUST_PROXY` | `0` | Quantidade ou identificação dos proxies reversos confiáveis |
 | `CRON_METRICS_SCHEDULE` | `0 * * * *` | Expressão cron do job de consolidação de métricas |
 | `FRONTEND_URL` | `http://localhost:3001` | Origem extra liberada no CORS durante o desenvolvimento |
 | `SEED_ADMIN_EMAIL` | `admin@fiscalize.gov.br` | Email do admin criado pelo seed |
@@ -175,6 +182,22 @@ Em desenvolvimento, quando as credenciais não estão configuradas, o código é
 registrado no log do backend. Em produção, a ausência das credenciais ou um
 remetente inválido impede a inicialização do servidor, e uma falha do Gmail
 interrompe a solicitação sem criar um desafio utilizável.
+
+### Rate limiting e proteção contra DDoS
+
+As rotas gerais são limitadas a 100 requisições por minuto e por IP. As rotas
+de autenticação usam limite de 10 requisições por minuto; OTP usa 5; e a
+submissão de denúncias usa 10. O excesso retorna HTTP 429 com headers de limite
+e `Retry-After`.
+
+Em produção, o Redis deve estar configurado para que os contadores sejam
+compartilhados entre instâncias. `TRUST_PROXY` deve corresponder à topologia
+real do provedor, evitando confiar cegamente em `X-Forwarded-For`.
+
+Esse controle protege a aplicação contra abuso e excesso de requisições, mas
+não substitui WAF, CDN ou proteção anti-DDoS do provedor. Essas camadas externas
+devem ser comprovadas separadamente por configuração, evidência do provedor e
+procedimentos operacionais.
 
 ---
 
