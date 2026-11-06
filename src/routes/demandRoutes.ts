@@ -30,11 +30,10 @@ router.patch(
   demandController.updateStatus
 );
 
-router.delete(
-  '/:id',
-  authenticate,
-  requireRole(['Gestor']),
-  demandController.delete
-);
+// Created by AI.
+// Updated by AI.
+// The owner (Cidadao) or a Gestor may delete — the ownership check itself
+// lives in demandService.deleteDemand, since it needs the demand's row.
+router.delete('/:id', authenticate, demandController.delete);
 
 export default router;

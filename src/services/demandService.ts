@@ -584,13 +584,20 @@ export const demandService = {
     };
   },
 
-  async deleteDemand(chamadoId: string, userId: string) {
+  // Updated by AI.
+  // Called by DELETE /demands/:id. A Cidadao may only delete his own demand;
+  // a Gestor (or Admin) may delete any.
+  async deleteDemand(chamadoId: string, userId: string, perfil?: string) {
     const chamado = await prisma.chamado.findUnique({
       where: { id: chamadoId },
     });
 
     if (!chamado) {
       throw new AppError(404, 'Demanda não encontrada.');
+    }
+
+    if (perfil !== 'Gestor' && perfil !== 'Admin' && chamado.cidadaoid !== userId) {
+      throw new AppError(403, 'Você não tem permissão para excluir esta demanda.');
     }
 
     await prisma.$transaction(async (tx) => {

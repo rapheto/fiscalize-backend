@@ -142,7 +142,8 @@ async delete(req: AuthRequest, res: Response, next: NextFunction) {
       throw new AppError(400, 'ID inválido');
     }
 
-    await demandService.deleteDemand(id, req.user!.id);
+    // Updated by AI.
+    await demandService.deleteDemand(id, req.user!.id, req.user!.perfil);
 
     res.status(204).send();
   } catch (error) {
