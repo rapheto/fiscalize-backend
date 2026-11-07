@@ -1,4 +1,5 @@
 import { rateLimit, type Options } from 'express-rate-limit';
+import type { Request } from 'express';
 import { RedisStore, type RedisReply } from 'rate-limit-redis';
 import {
   RATE_LIMIT_AUTH_MAX,
@@ -41,7 +42,8 @@ function storeForRateLimit(name: string): Options['store'] | undefined {
 }
 
 // Created by AI.
-function createLimiter(max: number, name: string) {
+// Updated by AI.
+function createLimiter(max: number, name: string, skip?: Options['skip']) {
   const store = storeForRateLimit(name);
   const options = {
     windowMs: RATE_LIMIT_WINDOW_MS,
@@ -54,9 +56,40 @@ function createLimiter(max: number, name: string) {
       message: 'Limite de requisições excedido. Tente novamente mais tarde.',
     },
     passOnStoreError: false,
+    ...(skip ? { skip } : {}),
     ...(store ? { store } : {}),
   } satisfies Partial<Options>;
   return rateLimit(options);
+}
+
+// Created by AI.
+function skipInvalidRegistration(request: Request): boolean {
+  if (request.path !== '/register') return false;
+
+  const body = request.body as Record<string, unknown> | undefined;
+  const requiredFields = [
+    'nome',
+    'email',
+    'senha',
+    'cpf',
+    'dataNascimento',
+    'rua',
+    'numero',
+    'bairro',
+    'cidade',
+    'estado',
+    'cep',
+  ];
+
+  return (
+    !body ||
+    requiredFields.some((field) => {
+      const value = body[field];
+      return value === undefined || value === null || value === '';
+    }) ||
+    typeof body.email !== 'string' ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)
+  );
 }
 
 // Created by AI.
@@ -68,7 +101,8 @@ export const generalRateLimiter = createLimiter(
 // Created by AI.
 export const authenticationRateLimiter = createLimiter(
   RATE_LIMIT_AUTH_MAX,
-  'authentication'
+  'authentication',
+  skipInvalidRegistration
 );
 
 // Created by AI.
