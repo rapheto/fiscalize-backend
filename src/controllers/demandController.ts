@@ -2,6 +2,51 @@ import { Request, Response, NextFunction } from 'express';
 import { AuthRequest } from '../middlewares/authMiddleware';
 import { demandService } from '../services/demandService';
 import { AppError } from '../middlewares/errorMiddleware';
+import { isValidCoordinate, normalizeBairro } from '../utils/address';
+
+// Created by AI.
+function optionalText(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  const text = String(value).trim();
+  return text.length > 0 ? text : null;
+}
+
+// Created by AI.
+function parseCoordinates(body: Record<string, unknown>): {
+  latitude: number;
+  longitude: number;
+} {
+  const hasLatitude = body['latitude'] !== undefined && body['latitude'] !== null && body['latitude'] !== '';
+  const hasLongitude =
+    body['longitude'] !== undefined && body['longitude'] !== null && body['longitude'] !== '';
+
+  if (!hasLatitude || !hasLongitude) {
+    throw new AppError(400, 'Latitude e longitude são obrigatórias.');
+  }
+
+  const latitude = Number(body['latitude']);
+  const longitude = Number(body['longitude']);
+
+  if (!isValidCoordinate(latitude, longitude)) {
+    throw new AppError(400, 'Coordenadas inválidas. Use a localização obtida pelo CEP ou pelo GPS.');
+  }
+
+  return { latitude, longitude };
+}
+
+// Created by AI.
+function structuredAddress(body: Record<string, unknown>) {
+  return {
+    cep: optionalText(body['cep']),
+    rua: optionalText(body['rua']),
+    numero: optionalText(body['numero']),
+    bairro: optionalText(body['bairro']),
+    cidade: optionalText(body['cidade']),
+    estado: optionalText(body['estado']),
+    complemento: optionalText(body['complemento']),
+  };
+}
+
 
 export const demandController = {
   // Created by AI.
@@ -29,21 +74,48 @@ export const demandController = {
     }
   },
 
+  // Updated by AI.
   async create(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const { title, description, category_id, location, latitude, longitude } = req.body;
+      const body = req.body as Record<string, unknown>;
+      const { title, description, category_id, location } = body;
 
-      if (!title || !description || !category_id || !location) {
-        throw new AppError(400, 'Campos obrigatórios: title, description, category_id, location');
+      if (!title || !description || !category_id) {
+        throw new AppError(400, 'Campos obrigatórios: title, description, category_id');
       }
+
+      const address = structuredAddress(body);
+      if (!address.bairro) {
+        throw new AppError(400, 'Bairro é obrigatório.');
+      }
+
+      const hasCompleteAddress =
+        Boolean(address.rua) && Boolean(address.cidade) && Boolean(address.estado) && Boolean(address.cep);
+      const legacyLocation = optionalText(location);
+
+      if (!hasCompleteAddress && !legacyLocation) {
+        throw new AppError(
+          400,
+          'Informe o endereço estruturado (rua, bairro, cidade, estado e CEP) ou location.'
+        );
+      }
+
+      const { latitude, longitude } = parseCoordinates(body);
 
       const demand = await demandService.create({
         title: String(title),
         description: String(description),
         categoryId: Number(category_id),
-        location: String(location),
-        ...(latitude !== undefined && { latitude: Number(latitude) }),
-        ...(longitude !== undefined && { longitude: Number(longitude) }),
+        ...(legacyLocation && { location: legacyLocation }),
+        cep: address.cep,
+        rua: address.rua,
+        numero: address.numero,
+        bairro: normalizeBairro(address.bairro),
+        cidade: address.cidade,
+        estado: address.estado,
+        complemento: address.complemento,
+        latitude,
+        longitude,
         userId: req.user!.id,
       });
 
@@ -52,6 +124,7 @@ export const demandController = {
       next(error);
     }
   },
+
   async list(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { status, categoria, regiao, orgao, ordenacao, page, limit } = req.query;
@@ -86,20 +159,39 @@ export const demandController = {
     }
   },
 
+  // Updated by AI.
   async update(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const id = req.params['id'] as string;
-      const { title, description, location, category_id, latitude, longitude } = req.body;
+      const body = req.body as Record<string, unknown>;
+      const { title, description, location, category_id } = body;
+      const address = structuredAddress(body);
+
+      if (body['bairro'] !== undefined && !address.bairro) {
+        throw new AppError(400, 'Bairro é obrigatório.');
+      }
+
+      const hasCoordinateInput = body['latitude'] !== undefined || body['longitude'] !== undefined;
+      const coordinates = hasCoordinateInput ? parseCoordinates(body) : null;
 
       const demand = await demandService.update({
         id,
         userId: req.user!.id,
         ...(title !== undefined && { title: String(title) }),
         ...(description !== undefined && { description: String(description) }),
-        ...(location !== undefined && { location: String(location) }),
+        ...(location !== undefined && { location: optionalText(location) }),
         ...(category_id !== undefined && { categoryId: Number(category_id) }),
-        ...(latitude !== undefined && { latitude: Number(latitude) }),
-        ...(longitude !== undefined && { longitude: Number(longitude) }),
+        ...(address.cep !== null && { cep: address.cep }),
+        ...(address.rua !== null && { rua: address.rua }),
+        ...(address.numero !== null && { numero: address.numero }),
+        ...(address.bairro !== null && { bairro: normalizeBairro(address.bairro) }),
+        ...(address.cidade !== null && { cidade: address.cidade }),
+        ...(address.estado !== null && { estado: address.estado }),
+        ...(address.complemento !== null && { complemento: address.complemento }),
+        ...(coordinates && {
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+        }),
       });
 
       res.status(200).json(demand);
@@ -107,6 +199,7 @@ export const demandController = {
       next(error);
     }
   },
+
 
 async updateStatus(req: AuthRequest, res: Response, next: NextFunction) {
   try {

@@ -49,6 +49,8 @@ export const MFA_VERIFICATION_EXPIRATION_MINUTES = 10;
 
 export const PORT = Number(process.env.PORT) || 3000;
 // Created by AI.
+export const ETL_DATABASE_URL = process.env.ETL_DATABASE_URL;
+// Created by AI.
 // Updated by AI.
 export const TRUST_PROXY =
   process.env.TRUST_PROXY || (NODE_ENV === 'test' || isProduction ? '1' : '0');

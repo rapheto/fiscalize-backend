@@ -1,6 +1,7 @@
 import { prisma } from '../config/prisma';
 import { AppError } from '../middlewares/errorMiddleware';
 import { invalidateMetricsCache } from '../utils/cache';
+import { composeAddress, normalizeBairro, normalizeCep } from '../utils/address';
 import { prioridade, status_chamado } from '@prisma/client';
 
 const STATUS_DISPLAY: Record<status_chamado, string> = {
@@ -41,13 +42,21 @@ function displayPriority(p: prioridade): string {
   return PRIORITY_DISPLAY[p] ?? p;
 }
 
+// Created by AI.
 interface UpdateDemandInput {
   id: string;
   userId: string;
   title?: string;
   description?: string;
-  location?: string;
+  location?: string | null;
   categoryId?: number;
+  cep?: string | null;
+  rua?: string | null;
+  numero?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  complemento?: string | null;
   latitude?: number;
   longitude?: number;
 }
@@ -80,13 +89,21 @@ export type PublicDemand = {
 
 const BLOCKED_STATUSES = ['Em_Andamento', 'Resolvido', 'Fechado'] as const;
 
+// Created by AI.
 interface CreateDemandInput {
   title: string;
   description: string;
   categoryId: number;
-  location: string;
-  latitude?: number;
-  longitude?: number;
+  location?: string | null;
+  cep?: string | null;
+  rua?: string | null;
+  numero?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  complemento?: string | null;
+  latitude: number;
+  longitude: number;
   userId: string;
 }
 
@@ -210,6 +227,13 @@ export const demandService = {
         description: c.descricao,
         status: displayStatus(c.status),
         location: c.endereco,
+        cep: c.cep,
+        rua: c.rua,
+        numero: c.numero,
+        bairro: c.bairro,
+        cidade: c.cidade,
+        estado: c.estado,
+        complemento: c.complemento,
         latitude: Number(c.latitude),
         longitude: Number(c.longitude),
         category: c.categoria,
@@ -277,6 +301,13 @@ export const demandService = {
       description: chamado.descricao,
       status: displayStatus(chamado.status),
       location: chamado.endereco,
+      cep: chamado.cep,
+      rua: chamado.rua,
+      numero: chamado.numero,
+      bairro: chamado.bairro,
+      cidade: chamado.cidade,
+      estado: chamado.estado,
+      complemento: chamado.complemento,
       latitude: Number(chamado.latitude),
       longitude: Number(chamado.longitude),
       category: chamado.categoria,
@@ -301,8 +332,25 @@ export const demandService = {
     };
   },
 
+  // Updated by AI.
   async update(input: UpdateDemandInput) {
-    const { id, userId, title, description, location, categoryId, latitude, longitude } = input;
+    const {
+      id,
+      userId,
+      title,
+      description,
+      location,
+      categoryId,
+      cep,
+      rua,
+      numero,
+      bairro,
+      cidade,
+      estado,
+      complemento,
+      latitude,
+      longitude,
+    } = input;
 
     // 1. Find demand
     const chamado = await prisma.chamado.findUnique({
@@ -357,14 +405,40 @@ export const demandService = {
       }
     }
 
-    // 5. Update chamado + log timeline_event atomically
+    // 5. Atualiza chamado + log timeline_event atomicamente
+    const hasAddressUpdate = [cep, rua, numero, bairro, cidade, estado, complemento].some(
+      (value) => value !== undefined
+    );
+    const nextAddress = {
+      cep: cep !== undefined ? cep : chamado.cep,
+      rua: rua !== undefined ? rua : chamado.rua,
+      numero: numero !== undefined ? numero : chamado.numero,
+      bairro: bairro !== undefined ? normalizeBairro(bairro) : chamado.bairro,
+      cidade: cidade !== undefined ? cidade : chamado.cidade,
+      estado: estado !== undefined ? estado : chamado.estado,
+      complemento: complemento !== undefined ? complemento : chamado.complemento,
+    };
+    const nextEndereco =
+      location !== undefined
+        ? location?.trim() || composeAddress(nextAddress)
+        : hasAddressUpdate
+          ? composeAddress(nextAddress)
+          : chamado.endereco;
+
     const updated = await prisma.$transaction(async (tx) => {
       const result = await tx.chamado.update({
         where: { id },
         data: {
           ...(title !== undefined && { subcategoria: title }),
           ...(description !== undefined && { descricao: description }),
-          ...(location !== undefined && { endereco: location }),
+          ...((location !== undefined || hasAddressUpdate) && { endereco: nextEndereco }),
+          ...(cep !== undefined && { cep: normalizeCep(cep) }),
+          ...(rua !== undefined && { rua: rua ?? null }),
+          ...(numero !== undefined && { numero: numero ?? null }),
+          ...(bairro !== undefined && { bairro: normalizeBairro(bairro) }),
+          ...(cidade !== undefined && { cidade: cidade ?? null }),
+          ...(estado !== undefined && { estado: estado?.toUpperCase() ?? null }),
+          ...(complemento !== undefined && { complemento: complemento ?? null }),
           ...(categoryId !== undefined && { categoriaid: categoryId }),
           ...(latitude !== undefined && { latitude }),
           ...(longitude !== undefined && { longitude }),
@@ -392,12 +466,30 @@ export const demandService = {
             subcategoria: chamado.subcategoria,
             descricao: chamado.descricao,
             endereco: chamado.endereco,
+            bairro: chamado.bairro,
+            cep: chamado.cep,
+            rua: chamado.rua,
+            numero: chamado.numero,
+            cidade: chamado.cidade,
+            estado: chamado.estado,
+            complemento: chamado.complemento,
+            latitude: chamado.latitude,
+            longitude: chamado.longitude,
             categoriaid: chamado.categoriaid,
           },
           dadosnovos: {
             subcategoria: title ?? chamado.subcategoria,
             descricao: description ?? chamado.descricao,
-            endereco: location ?? chamado.endereco,
+            endereco: nextEndereco,
+            bairro: nextAddress.bairro,
+            cep: nextAddress.cep,
+            rua: nextAddress.rua,
+            numero: nextAddress.numero,
+            cidade: nextAddress.cidade,
+            estado: nextAddress.estado,
+            complemento: nextAddress.complemento,
+            latitude: latitude ?? chamado.latitude,
+            longitude: longitude ?? chamado.longitude,
             categoriaid: categoryId ?? chamado.categoriaid,
           },
         },
@@ -417,6 +509,13 @@ export const demandService = {
       description: updated.descricao,
       category: updated.categoria,
       location: updated.endereco,
+      cep: updated.cep,
+      rua: updated.rua,
+      numero: updated.numero,
+      bairro: updated.bairro,
+      cidade: updated.cidade,
+      estado: updated.estado,
+      complemento: updated.complemento,
       latitude: Number(updated.latitude),
       longitude: Number(updated.longitude),
       status: displayStatus(updated.status),
@@ -425,8 +524,25 @@ export const demandService = {
     };
   },
 
+  // Updated by AI.
   async create(input: CreateDemandInput) {
-    const { title, description, categoryId, location, latitude, longitude, userId } = input;
+    const {
+      title,
+      description,
+      categoryId,
+      location,
+      cep,
+      rua,
+      numero,
+      bairro,
+      cidade,
+      estado,
+      complemento,
+      latitude,
+      longitude,
+      userId,
+    } = input;
+    const endereco = location?.trim() || composeAddress(input);
 
     // 1. Validate category exists and is active
     const categoria = await prisma.categoria.findUnique({ where: { id: categoryId } });
@@ -483,9 +599,16 @@ export const demandService = {
           orgaoid,
           categoriaid: categoryId,
           subcategoria: title,
-          endereco: location,
-          latitude: latitude ?? 0,
-          longitude: longitude ?? 0,
+          endereco,
+          cep: normalizeCep(cep),
+          rua: rua ?? null,
+          numero: numero ?? null,
+          bairro: normalizeBairro(bairro),
+          cidade: cidade ?? null,
+          estado: estado?.toUpperCase() ?? null,
+          complemento: complemento ?? null,
+          latitude,
+          longitude,
           prioridade,
           slahoras,
           sladeadline,
@@ -522,6 +645,13 @@ export const demandService = {
       description: chamado.descricao,
       category: chamado.categoria,
       location: chamado.endereco,
+      cep: chamado.cep,
+      rua: chamado.rua,
+      numero: chamado.numero,
+      bairro: chamado.bairro,
+      cidade: chamado.cidade,
+      estado: chamado.estado,
+      complemento: chamado.complemento,
       latitude: Number(chamado.latitude),
       longitude: Number(chamado.longitude),
       status: displayStatus(chamado.status),

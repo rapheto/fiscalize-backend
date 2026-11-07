@@ -160,6 +160,17 @@ O arquivo `.env.example` é a referência completa e comentada. Resumo:
 
 ---
 
+### Dashboard ETL no aplicativo
+
+O endpoint público `GET /dashboard/etl/population` lê a tabela final
+`chamados_populacao` no Neon e é consumido pela tela **Dashboard ETL** do
+mobile. Configure `ETL_DATABASE_URL` com a mesma conexão usada em
+`etl/.env` como `DATABASE_URL`. Essa conexão deve ser somente leitura.
+
+O dashboard mobile oferece filtro por bairro, indicadores de chamados,
+população e média por 1.000 habitantes, gráfico responsivo e atualização
+manual por reload ou gesto de arrastar para baixo.
+
 ### MFA/OTP
 
 O primeiro login em cada dispositivo exige um código de seis dígitos enviado ao
@@ -270,6 +281,44 @@ curl http://localhost:3000/auth/me -b cookies.txt
 ```
 
 > **Não versione o `cookies.txt`** — ele contém um token de sessão válido.
+
+### Endereço estruturado dos chamados
+
+Ao criar uma demanda (`POST /demands`), o cliente deve enviar o endereço
+estruturado e as coordenadas obtidas automaticamente pelo aplicativo:
+
+```json
+{
+  "title": "Buraco na via",
+  "description": "Buraco grande próximo à esquina.",
+  "category_id": 1,
+  "cep": "51020000",
+  "rua": "Rua dos Navegantes",
+  "numero": null,
+  "bairro": "Boa Viagem",
+  "cidade": "Recife",
+  "estado": "PE",
+  "complemento": null,
+  "latitude": -8.1264,
+  "longitude": -34.9036
+}
+```
+
+Regras do contrato:
+
+- `bairro`, `cep`, `rua`, `cidade`, `estado`, `latitude` e `longitude` são
+  obrigatórios na criação.
+- `numero` e `complemento` são opcionais no chamado.
+- `latitude` e `longitude` devem ser coordenadas válidas obtidas pelo CEP/GPS;
+  não devem ser digitadas manualmente pelo usuário.
+- O backend normaliza o bairro (maiúsculas e sem acentos) e mantém `endereco`
+  como texto composto para compatibilidade com clientes existentes.
+- O cadastro do cidadão continua exigindo `numero` e não recebe coordenadas.
+
+Na atualização (`PUT /demands/:id`), os campos podem ser enviados
+parcialmente. Se o endereço for alterado, envie também novas coordenadas para
+que elas continuem correspondendo ao local do chamado. A documentação
+interativa e o esquema completo estão disponíveis em `GET /docs`.
 
 ---
 

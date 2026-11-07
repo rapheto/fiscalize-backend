@@ -689,6 +689,63 @@ async function seed() {
     console.log(`  └─ Resolvidos: 2`)
     console.log(`  └─ Fechados: 1`)
 
+    // Created by AI.
+    const ETL_DASHBOARD_SAMPLE = Array.from({ length: 20 }, (_, index) => {
+      const bairros = [
+        'BOA VIAGEM',
+        'IMBIRIBEIRA',
+        'AFOGADOS',
+        'CASA FORTE',
+        'SANTO AMARO',
+      ]
+      const bairro = bairros[index % bairros.length]!
+      const numero = String(200 + index)
+      const status = index % 4 === 0 ? 'Resolvido' as const : 'Aberto' as const
+
+      return {
+        protocolo: `DEM-ETL-${String(index + 1).padStart(3, '0')}`,
+        descricao: `Chamado de demonstração do dashboard ETL no bairro ${bairro}.`,
+        bairro,
+        numero,
+        status,
+        prioridade: index % 3 === 0 ? 'Alta' as const : 'Media' as const,
+        latitude: -8.06 - index * 0.001,
+        longitude: -34.90 + index * 0.001,
+      }
+    })
+
+    let etlDashboardCreated = 0
+    for (const chamado of ETL_DASHBOARD_SAMPLE) {
+      await prisma.chamado.upsert({
+        where: { protocolo: chamado.protocolo },
+        update: {},
+        create: {
+          protocolo: chamado.protocolo,
+          descricao: chamado.descricao,
+          cidadaoid: CIDADAO_ID,
+          gestorid: chamado.status === 'Resolvido' ? GESTOR_ID : null,
+          orgaoid: 'EMLURB',
+          categoriaid: infraId,
+          subcategoria: 'Pavimentação',
+          endereco: `Rua de demonstração, ${chamado.numero}, ${chamado.bairro}, Recife - PE`,
+          cep: '51020000',
+          rua: 'Rua de demonstração',
+          numero: chamado.numero,
+          bairro: chamado.bairro,
+          cidade: 'Recife',
+          estado: 'PE',
+          latitude: chamado.latitude,
+          longitude: chamado.longitude,
+          status: chamado.status,
+          prioridade: chamado.prioridade,
+          slahoras: 72,
+          sladeadline: deadline(72),
+        },
+      })
+      etlDashboardCreated++
+    }
+    console.log(`✓ ${etlDashboardCreated} chamados adicionais para o dashboard ETL criados/verificados`)
+
     // ----------------------------------------------------------
     // 7. Timeline events para chamados resolvidos/fechados
     //    (necessário para /metrics/average-response-time)

@@ -13,6 +13,7 @@
 
 import { PORT } from './env';
 
+// Updated by AI.
 const BEARER = [{ cookieAuth: [] as string[] }, { bearerAuth: [] as string[] }];
 
 /** Resposta de erro padronizada (errorMiddleware.ts). */
@@ -48,6 +49,7 @@ export const openApiSpec = {
     { name: 'Health', description: 'Verificação de saúde do serviço' },
     { name: 'Auth', description: 'Registro, login, logout e sessão' },
     { name: 'Demands', description: 'Demandas urbanas (chamados) — cidadão e gestor' },
+    { name: 'Dashboard ETL', description: 'Indicadores públicos derivados do pipeline ETL' },
     { name: 'Categories', description: 'Categorias de demandas' },
     { name: 'Users', description: 'Consulta de usuários (gestor)' },
     { name: 'Gestor', description: 'Painel do gestor: dashboard, equipe e fila de chamados' },
@@ -102,6 +104,13 @@ export const openApiSpec = {
           description: { type: 'string' },
           status: { $ref: '#/components/schemas/StatusChamado' },
           location: { type: 'string', example: 'Rua das Flores, 123' },
+          cep: { type: 'string', nullable: true, example: '51020000' },
+          rua: { type: 'string', nullable: true, example: 'Rua das Flores' },
+          numero: { type: 'string', nullable: true, example: '123' },
+          bairro: { type: 'string', nullable: true, example: 'BOA VIAGEM' },
+          cidade: { type: 'string', nullable: true, example: 'Recife' },
+          estado: { type: 'string', nullable: true, example: 'PE' },
+          complemento: { type: 'string', nullable: true, example: null },
           latitude: { type: 'number', format: 'double', example: -23.55052 },
           longitude: { type: 'number', format: 'double', example: -46.633308 },
           category: { $ref: '#/components/schemas/Category' },
@@ -434,6 +443,42 @@ export const openApiSpec = {
     },
 
     /* ===================== DEMANDS ===================== */
+    '/dashboard/etl/population': {
+      get: {
+        tags: ['Dashboard ETL'],
+        summary: 'Consultar dados públicos do dashboard ETL',
+        description: 'Lê a tabela final chamados_populacao no Neon configurado em ETL_DATABASE_URL.',
+        security: [],
+        responses: {
+          200: {
+            description: 'Dados agregados por bairro',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    data: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          bairro: { type: 'string', nullable: true },
+                          chamados: { type: 'integer' },
+                          populacao: { type: 'number', nullable: true },
+                          chamados_por_1000: { type: 'number', nullable: true },
+                        },
+                      },
+                    },
+                    updatedAt: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+            },
+          },
+          503: { description: 'Banco do ETL indisponível ou não configurado' },
+        },
+      },
+    },
     '/demands/public': {
       get: {
         tags: ['Demands'],
@@ -500,12 +545,19 @@ export const openApiSpec = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['title', 'description', 'category_id', 'location'],
+                required: ['title', 'description', 'category_id', 'bairro', 'latitude', 'longitude'],
                 properties: {
                   title: { type: 'string', example: 'Poste apagado' },
                   description: { type: 'string' },
                   category_id: { type: 'integer', example: 1 },
                   location: { type: 'string', example: 'Rua das Flores, 123' },
+                  cep: { type: 'string', example: '51020000' },
+                  rua: { type: 'string', example: 'Rua das Flores' },
+                  numero: { type: 'string', nullable: true, example: '123' },
+                  bairro: { type: 'string', example: 'Boa Viagem' },
+                  cidade: { type: 'string', example: 'Recife' },
+                  estado: { type: 'string', example: 'PE' },
+                  complemento: { type: 'string', nullable: true },
                   latitude: { type: 'number', format: 'double' },
                   longitude: { type: 'number', format: 'double' },
                 },
@@ -563,6 +615,13 @@ export const openApiSpec = {
                   title: { type: 'string' },
                   description: { type: 'string' },
                   location: { type: 'string' },
+                  cep: { type: 'string' },
+                  rua: { type: 'string' },
+                  numero: { type: 'string', nullable: true },
+                  bairro: { type: 'string' },
+                  cidade: { type: 'string' },
+                  estado: { type: 'string' },
+                  complemento: { type: 'string', nullable: true },
                   category_id: { type: 'integer' },
                   latitude: { type: 'number', format: 'double' },
                   longitude: { type: 'number', format: 'double' },
@@ -583,7 +642,7 @@ export const openApiSpec = {
       },
       delete: {
         tags: ['Demands'],
-        summary: 'Excluir demanda — soft delete, marca como Fechado (perfil Gestor)',
+        summary: 'Excluir demanda — soft delete, marca como Fechado (autor ou perfil Gestor)',
         security: BEARER,
         responses: {
           204: { description: 'Demanda removida (sem conteúdo)' },

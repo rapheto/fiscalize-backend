@@ -1,7 +1,7 @@
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["partialIndexes"]
-  engineType = "library"
+  engineType      = "library"
 }
 
 datasource db {
@@ -35,6 +35,7 @@ model categoria {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+// Updated by AI.
 model chamado {
   id                 String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   protocolo          String           @unique @db.VarChar(20)
@@ -45,6 +46,20 @@ model chamado {
   categoriaid        Int
   subcategoria       String           @db.VarChar(100)
   endereco           String           @db.VarChar(255)
+  // Created by AI.
+  cep                String?          @db.VarChar(9)
+  // Created by AI.
+  rua                String?          @db.VarChar(150)
+  // Created by AI.
+  numero             String?          @db.VarChar(20)
+  // Created by AI.
+  bairro             String?          @db.VarChar(100)
+  // Created by AI.
+  cidade             String?          @db.VarChar(100)
+  // Created by AI.
+  estado             String?          @db.VarChar(2)
+  // Created by AI.
+  complemento        String?          @db.VarChar(150)
   latitude           Decimal          @db.Decimal(10, 8)
   longitude          Decimal          @db.Decimal(11, 8)
   status             status_chamado   @default(Aberto)
@@ -65,6 +80,7 @@ model chamado {
   notificacao        notificacao[]
   timeline_event     timeline_event[]
 
+  @@index([bairro], map: "idx_chamado_bairro")
   @@index([categoriaid], map: "idx_chamado_categoria")
   @@index([cidadaoid, criadoem(sort: Desc)], map: "idx_chamado_cidadao")
   @@index([criadoem(sort: Desc)], map: "idx_chamado_criadoem")
@@ -84,21 +100,21 @@ model chamado {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model cidadao {
-  id          String    @id @db.Uuid
-  cpf         String?   @unique @db.VarChar(30)
+  id               String    @id @db.Uuid
+  cpf              String?   @unique @db.VarChar(30)
   // Updated by AI.
-  data_nascimento DateTime? @db.Date
-  rua         String?   @db.VarChar(150)
-  numero      String?   @db.VarChar(20)
-  bairro      String?   @db.VarChar(100)
-  cidade      String?   @db.VarChar(100)
-  estado      String?   @db.VarChar(2)
-  cep         String?   @db.VarChar(9)
-  complemento String?   @db.VarChar(150)
-  endereco    String?   @db.VarChar(500)
-  anonimizar_dados Boolean @default(false)
-  chamado     chamado[]
-  usuario     usuario   @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  data_nascimento  DateTime? @db.Date
+  rua              String?   @db.VarChar(150)
+  numero           String?   @db.VarChar(20)
+  bairro           String?   @db.VarChar(100)
+  cidade           String?   @db.VarChar(100)
+  estado           String?   @db.VarChar(2)
+  cep              String?   @db.VarChar(9)
+  complemento      String?   @db.VarChar(150)
+  endereco         String?   @db.VarChar(500)
+  anonimizar_dados Boolean   @default(false)
+  chamado          chamado[]
+  usuario          usuario   @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([cpf], map: "idx_cidadao_cpf", where: raw("(cpf IS NOT NULL)"))
 }
@@ -249,31 +265,31 @@ model timeline_event {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 // Updated by AI.
 model usuario {
-  id            String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  nome          String          @db.VarChar(150)
-  email         String          @unique @db.VarChar(100)
-  senha         String          @db.VarChar(255)
-  perfil        perfil
-  status        status_enum     @default(Ativo)
-  criadoem      DateTime        @default(now()) @db.Timestamp(6)
-  atualizadoem  DateTime        @default(now()) @db.Timestamp(6)
-  atualizadopor String?         @db.Uuid
+  id                         String                      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome                       String                      @db.VarChar(150)
+  email                      String                      @unique @db.VarChar(100)
+  senha                      String                      @db.VarChar(255)
+  perfil                     perfil
+  status                     status_enum                 @default(Ativo)
+  criadoem                   DateTime                    @default(now()) @db.Timestamp(6)
+  atualizadoem               DateTime                    @default(now()) @db.Timestamp(6)
+  atualizadopor              String?                     @db.Uuid
   // Created by AI.
   // Updated by AI.
-  tentativas_login_falhas Int   @default(0)
+  tentativas_login_falhas    Int                         @default(0)
   // Created by AI.
   // Updated by AI.
-  bloqueado_ate DateTime?       @db.Timestamptz(6)
-  admin         admin?
-  cidadao       cidadao?
-  gestor        gestor?
-  notificacao   notificacao[]
-  usuario_audit usuario_audit[]
-  audit_logs    audit_logs[]  @relation("audit_logs_admin")
+  bloqueado_ate              DateTime?                   @db.Timestamptz(6)
+  admin                      admin?
+  cidadao                    cidadao?
+  gestor                     gestor?
+  notificacao                notificacao[]
+  usuario_audit              usuario_audit[]
+  audit_logs                 audit_logs[]                @relation("audit_logs_admin")
   // Updated by AI.
-  refresh_tokens refresh_token[]
-  dispositivos usuario_dispositivo[]
-  otp_challenges otp_challenge[]
+  refresh_tokens             refresh_token[]
+  dispositivos               usuario_dispositivo[]
+  otp_challenges             otp_challenge[]
   consentimentos_privacidade consentimento_privacidade[]
 
   @@index([criadoem(sort: Desc)], map: "idx_usuario_criadoem")
@@ -284,14 +300,14 @@ model usuario {
 
 // Created by AI.
 model consentimento_privacidade {
-  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  usuario_id  String   @db.Uuid
-  tipo        String   @default("politica_privacidade") @db.VarChar(40)
-  versao      String   @db.VarChar(20)
-  documento   String   @db.VarChar(255)
-  origem      String   @db.VarChar(30)
-  aceito_em   DateTime @default(now()) @db.Timestamptz(6)
-  usuario     usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  usuario_id String   @db.Uuid
+  tipo       String   @default("politica_privacidade") @db.VarChar(40)
+  versao     String   @db.VarChar(20)
+  documento  String   @db.VarChar(255)
+  origem     String   @db.VarChar(30)
+  aceito_em  DateTime @default(now()) @db.Timestamptz(6)
+  usuario    usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 
   @@index([usuario_id, aceito_em(sort: Desc)])
   @@map("consentimentos_privacidade")
@@ -315,14 +331,14 @@ model refresh_token {
 
 // Created by AI.
 model usuario_dispositivo {
-  id            String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  usuario_id    String   @db.Uuid
-  device_hash   String   @db.VarChar(64)
-  device_name   String?  @db.VarChar(120)
-  trusted       Boolean  @default(true)
-  created_at    DateTime @default(now()) @db.Timestamptz(6)
-  last_used_at  DateTime @default(now()) @db.Timestamptz(6)
-  usuario       usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  usuario_id   String   @db.Uuid
+  device_hash  String   @db.VarChar(64)
+  device_name  String?  @db.VarChar(120)
+  trusted      Boolean  @default(true)
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  last_used_at DateTime @default(now()) @db.Timestamptz(6)
+  usuario      usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 
   @@unique([usuario_id, device_hash])
   @@index([usuario_id])
@@ -331,21 +347,21 @@ model usuario_dispositivo {
 
 // Created by AI.
 model otp_challenge {
-  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  usuario_id      String    @db.Uuid
-  challenge_hash  String    @unique @db.VarChar(64)
-  code_hash       String    @db.VarChar(64)
-  purpose         String    @db.VarChar(32)
-  action          String?   @db.VarChar(32)
-  device_hash     String?   @db.VarChar(64)
-  device_name     String?   @db.VarChar(120)
-  destination     String    @db.VarChar(160)
-  attempts        Int       @default(0)
-  expires_at      DateTime  @db.Timestamptz(6)
-  verified_at     DateTime?
-  consumed_at     DateTime?
-  created_at      DateTime  @default(now()) @db.Timestamptz(6)
-  usuario         usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  usuario_id     String    @db.Uuid
+  challenge_hash String    @unique @db.VarChar(64)
+  code_hash      String    @db.VarChar(64)
+  purpose        String    @db.VarChar(32)
+  action         String?   @db.VarChar(32)
+  device_hash    String?   @db.VarChar(64)
+  device_name    String?   @db.VarChar(120)
+  destination    String    @db.VarChar(160)
+  attempts       Int       @default(0)
+  expires_at     DateTime  @db.Timestamptz(6)
+  verified_at    DateTime?
+  consumed_at    DateTime?
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  usuario        usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 
   @@index([usuario_id, purpose, created_at])
   @@index([expires_at])

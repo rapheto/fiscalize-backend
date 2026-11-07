@@ -213,6 +213,7 @@ export const authController = {
   },
 
   // Created by AI.
+  // Updated by AI.
   async updateMe(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { nome, email, rua, numero, bairro, cidade, estado, cep, complemento } = req.body;
@@ -223,6 +224,16 @@ export const authController = {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(String(email))) {
         throw new AppError(400, 'E-mail inválido.');
+      }
+
+      // Updated by AI.
+      // No cadastro do cidadão o número continua obrigatório; a regra de
+      // número opcional vale apenas para o chamado.
+      const hasAddressUpdate = [rua, bairro, cidade, estado, cep].some(
+        (value) => value !== undefined && value !== null && String(value).trim() !== ''
+      );
+      if (hasAddressUpdate && (!numero || String(numero).trim() === '')) {
+        throw new AppError(400, 'Número é obrigatório no cadastro do cidadão.');
       }
 
       const usuario = await authService.updateProfile(req.user!.id, {

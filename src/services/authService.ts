@@ -12,6 +12,7 @@ import {
 import { PRIVACY_POLICY_DOCUMENT } from '../config/privacyPolicy';
 import { assertPasswordPolicy } from '../utils/passwordPolicy';
 import { assertAdultBirthDate } from '../utils/agePolicy';
+import { composeAddress } from '../utils/address';
 import {
   createChallengeToken,
   createOtpCode,
@@ -136,7 +137,7 @@ export const authService = {
           estado: profile.estado,
           cep: profile.cep,
           complemento: profile.complemento ?? null,
-          endereco: `${profile.rua}, ${profile.numero}, ${profile.bairro}, ${profile.cidade} - ${profile.estado}, CEP ${profile.cep}${profile.complemento ? `, ${profile.complemento}` : ''}`,
+          endereco: composeAddress(profile),
         },
       });
 
@@ -515,6 +516,7 @@ export const authService = {
 
   // Created by AI.
   // Updated by AI.
+  // Updated by AI.
   async updateProfile(userId: string, data: {
     nome: string;
     email: string;
@@ -547,13 +549,13 @@ export const authService = {
                 rua: data.rua ?? null, numero: data.numero ?? null, bairro: data.bairro ?? null,
                 cidade: data.cidade ?? null, estado: data.estado ?? null, cep: data.cep ?? null,
                 complemento: data.complemento ?? null,
-                endereco: `${data.rua ?? ''}, ${data.numero ?? ''}, ${data.bairro ?? ''}, ${data.cidade ?? ''} - ${data.estado ?? ''}, CEP ${data.cep ?? ''}${data.complemento ? `, ${data.complemento}` : ''}`,
+                endereco: composeAddress(data),
               },
               update: {
                 rua: data.rua ?? null, numero: data.numero ?? null, bairro: data.bairro ?? null,
                 cidade: data.cidade ?? null, estado: data.estado ?? null, cep: data.cep ?? null,
                 complemento: data.complemento ?? null,
-                endereco: `${data.rua ?? ''}, ${data.numero ?? ''}, ${data.bairro ?? ''}, ${data.cidade ?? ''} - ${data.estado ?? ''}, CEP ${data.cep ?? ''}${data.complemento ? `, ${data.complemento}` : ''}`,
+                endereco: composeAddress(data),
               },
             },
           },
