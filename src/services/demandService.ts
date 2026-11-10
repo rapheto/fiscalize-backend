@@ -132,7 +132,10 @@ export const demandService = {
   // Created by AI.
   async listPublic(page: number, limit: number, status?: string) {
     const normalizedStatus = status ? STATUS_QUERY_VALUES[status] : undefined;
-    const where = normalizedStatus ? { status: normalizedStatus } : {};
+    // Updated by AI.
+    const where = normalizedStatus
+      ? { status: normalizedStatus, excluidoem: null }
+      : { excluidoem: null };
     const [chamados, total] = await Promise.all([
       prisma.chamado.findMany({
         where,
@@ -180,7 +183,8 @@ export const demandService = {
   async list(input: ListDemandsInput) {
     const { userId, perfil, status, categoria, regiao, orgao, ordenacao, page, limit } = input;
 
-    const where: Record<string, unknown> = {};
+    // Updated by AI.
+    const where: Record<string, unknown> = { excluidoem: null };
 
     if (perfil === 'Cidadao') where['cidadaoid'] = userId;
     if (status) where['status'] = STATUS_QUERY_VALUES[status] ?? status;
@@ -254,7 +258,11 @@ export const demandService = {
 
   // Created by AI.
   async listOrganizations(userId: string, perfil: string) {
-    const where = perfil === 'Cidadao' ? { cidadaoid: userId } : {};
+    // Updated by AI.
+    const where =
+      perfil === 'Cidadao'
+        ? { cidadaoid: userId, excluidoem: null }
+        : { excluidoem: null };
     const demands = await prisma.chamado.findMany({
       where: { ...where, orgaoid: { not: null } },
       distinct: ['orgaoid'],
@@ -266,8 +274,9 @@ export const demandService = {
 
   // Updated by AI.
   async findById(id: string, userId: string, perfil: string) {
-    const chamado = await prisma.chamado.findUnique({
-      where: { id },
+    // Updated by AI.
+    const chamado = await prisma.chamado.findFirst({
+      where: { id, excluidoem: null },
       include: {
         categoria: { select: { id: true, nome: true } },
         orgao: { select: { id: true, nome: true, sigla: true } },
@@ -353,8 +362,9 @@ export const demandService = {
     } = input;
 
     // 1. Find demand
-    const chamado = await prisma.chamado.findUnique({
-      where: { id },
+    // Updated by AI.
+    const chamado = await prisma.chamado.findFirst({
+      where: { id, excluidoem: null },
       include: { categoria: { select: { id: true, nome: true } } },
     });
     if (!chamado) throw new AppError(404, 'Demanda não encontrada.');
@@ -660,8 +670,9 @@ export const demandService = {
   },
 
   async updateStatus(chamadoId: string, userId: string, newStatus: any) {
-    const chamado = await prisma.chamado.findUnique({
-      where: { id: chamadoId },
+    // Updated by AI.
+    const chamado = await prisma.chamado.findFirst({
+      where: { id: chamadoId, excluidoem: null },
     });
 
     if (!chamado) throw new AppError(404, 'Demanda não encontrada.');
@@ -718,8 +729,9 @@ export const demandService = {
   // Called by DELETE /demands/:id. A Cidadao may only delete his own demand;
   // a Gestor (or Admin) may delete any.
   async deleteDemand(chamadoId: string, userId: string, perfil?: string) {
-    const chamado = await prisma.chamado.findUnique({
-      where: { id: chamadoId },
+    // Updated by AI.
+    const chamado = await prisma.chamado.findFirst({
+      where: { id: chamadoId, excluidoem: null },
     });
 
     if (!chamado) {
@@ -735,6 +747,8 @@ export const demandService = {
         where: { id: chamadoId },
         data: {
           status: 'Fechado',
+          // Updated by AI.
+          excluidoem: new Date(),
         },
       });
 
