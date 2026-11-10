@@ -73,6 +73,9 @@ model chamado {
   resolutionphotourl String?          @db.VarChar(500)
   criadoem           DateTime         @default(now()) @db.Timestamp(6)
   atualizadoem       DateTime         @default(now()) @db.Timestamp(6)
+  // Created by AI.
+  // Soft delete: quando preenchido, o chamado não aparece mais nas consultas.
+  excluidoem          DateTime?        @db.Timestamp(6)
   categoria          categoria        @relation(fields: [categoriaid], references: [id], onUpdate: NoAction)
   cidadao            cidadao          @relation(fields: [cidadaoid], references: [id], onDelete: Cascade, onUpdate: NoAction)
   gestor             gestor?          @relation(fields: [gestorid], references: [id], onUpdate: NoAction)
@@ -84,6 +87,8 @@ model chamado {
   @@index([categoriaid], map: "idx_chamado_categoria")
   @@index([cidadaoid, criadoem(sort: Desc)], map: "idx_chamado_cidadao")
   @@index([criadoem(sort: Desc)], map: "idx_chamado_criadoem")
+  // Created by AI.
+  @@index([excluidoem], map: "idx_chamado_excluidoem")
   @@index([gestorid, status, criadoem(sort: Desc)], map: "idx_chamado_gestor", where: raw("(gestorid IS NOT NULL)"))
   @@index([gestorid, status, criadoem(sort: Desc)], map: "idx_chamado_gestor_status_recentes")
   @@index([orgaoid, status, criadoem(sort: Desc)], map: "idx_chamado_orgao")

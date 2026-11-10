@@ -40,10 +40,11 @@ export const gestorController = {
 
       const [totalChamados, chamadosAbertos, chamadosEmProgresso, chamadosEncerrados] =
         await Promise.all([
-          prisma.chamado.count({ where: { orgaoid } }),
-          prisma.chamado.count({ where: { orgaoid, status: 'Aberto' } }),
-          prisma.chamado.count({ where: { orgaoid, status: status_chamado.Em_Andamento } }),
-          prisma.chamado.count({ where: { orgaoid, status: { in: ['Resolvido', 'Fechado'] } } }),
+          // Updated by AI.
+          prisma.chamado.count({ where: { orgaoid, excluidoem: null } }),
+          prisma.chamado.count({ where: { orgaoid, excluidoem: null, status: 'Aberto' } }),
+          prisma.chamado.count({ where: { orgaoid, excluidoem: null, status: status_chamado.Em_Andamento } }),
+          prisma.chamado.count({ where: { orgaoid, excluidoem: null, status: { in: ['Resolvido', 'Fechado'] } } }),
         ]);
 
       res.status(200).json({
@@ -80,7 +81,11 @@ export const gestorController = {
       });
       if (!gestor) throw new AppError(404, 'Gestor não encontrado.');
 
-      const whereClause: Record<string, unknown> = { orgaoid: gestor.orgaoid };
+      // Updated by AI.
+      const whereClause: Record<string, unknown> = {
+        orgaoid: gestor.orgaoid,
+        excluidoem: null,
+      };
 
       if (status && status !== 'Todos') {
         whereClause['status'] = status as status_chamado;
@@ -148,8 +153,9 @@ export const gestorController = {
       });
       if (!gestor) throw new AppError(404, 'Gestor não encontrado.');
 
-      const c = await prisma.chamado.findUnique({
-        where: { id },
+      // Updated by AI.
+      const c = await prisma.chamado.findFirst({
+        where: { id, excluidoem: null },
         select: {
           id: true,
           protocolo: true,
@@ -228,7 +234,10 @@ export const gestorController = {
       const gestor = await prisma.gestor.findUnique({ where: { id: gestorId }, select: { orgaoid: true } });
       if (!gestor) throw new AppError(404, 'Gestor não encontrado.');
 
-      const chamado = await prisma.chamado.findUnique({ where: { id } });
+      // Updated by AI.
+      const chamado = await prisma.chamado.findFirst({
+        where: { id, excluidoem: null },
+      });
       if (!chamado) throw new AppError(404, 'Chamado não encontrado.');
 
       const usuarioGestor = await prisma.usuario.findUnique({ where: { id: gestorId }, select: { perfil: true, nome: true } });
@@ -291,7 +300,10 @@ export const gestorController = {
       const gestor = await prisma.gestor.findUnique({ where: { id: gestorId }, select: { orgaoid: true } });
       if (!gestor) throw new AppError(404, 'Gestor não encontrado.');
 
-      const chamado = await prisma.chamado.findUnique({ where: { id } });
+      // Updated by AI.
+      const chamado = await prisma.chamado.findFirst({
+        where: { id, excluidoem: null },
+      });
       if (!chamado) throw new AppError(404, 'Chamado não encontrado.');
       if (chamado.orgaoid !== gestor.orgaoid) throw new AppError(403, 'Chamado não pertence ao seu órgão.');
 
@@ -351,7 +363,10 @@ export const gestorController = {
       const gestor = await prisma.gestor.findUnique({ where: { id: gestorId }, select: { orgaoid: true } });
       if (!gestor) throw new AppError(404, 'Gestor não encontrado.');
 
-      const chamado = await prisma.chamado.findUnique({ where: { id } });
+      // Updated by AI.
+      const chamado = await prisma.chamado.findFirst({
+        where: { id, excluidoem: null },
+      });
       if (!chamado) throw new AppError(404, 'Chamado não encontrado.');
       if (chamado.orgaoid !== gestor.orgaoid) throw new AppError(403, 'Chamado não pertence ao seu órgão.');
 

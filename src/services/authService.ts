@@ -624,6 +624,8 @@ export const authService = {
             cpf: true, rua: true, numero: true, bairro: true, cidade: true,
             estado: true, cep: true, complemento: true,
             chamado: {
+              // Updated by AI.
+              where: { excluidoem: null },
               select: {
                 id: true,
                 protocolo: true,
