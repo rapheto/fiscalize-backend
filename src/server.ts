@@ -7,6 +7,7 @@ import demandRoutes from './routes/demandRoutes';
 import categoryRoutes from './routes/categoryRoutes';
 import adminRoutes from './routes/adminRoutes';
 import metricsRoutes from './routes/metricsRoutes';
+import notificationRoutes from './routes/notificationRoutes';
 import etlDashboardRoutes from './routes/etlDashboardRoutes';
 import { errorHandler } from './middlewares/errorMiddleware';
 import { registerCronJobs } from './config/cron';
@@ -65,6 +66,7 @@ app.use('/demands', demandRoutes);
 app.use('/categories', categoryRoutes);
 app.use('/admin', adminRoutes);
 app.use('/metrics', metricsRoutes);
+app.use('/notifications', notificationRoutes);
 app.use('/dashboard/etl', etlDashboardRoutes);
 
 app.use(errorHandler);

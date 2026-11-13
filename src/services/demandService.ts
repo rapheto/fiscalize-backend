@@ -1,6 +1,10 @@
 import { prisma } from '../config/prisma';
 import { AppError } from '../middlewares/errorMiddleware';
 import { invalidateMetricsCache } from '../utils/cache';
+import {
+  notifyDemandCreated,
+  notifyDemandStatusChange,
+} from './notificationService';
 import { composeAddress, normalizeBairro, normalizeCep } from '../utils/address';
 import { prioridade, status_chamado } from '@prisma/client';
 
@@ -647,6 +651,7 @@ export const demandService = {
     });
 
     await invalidateMetricsCache(chamado.gestorid);
+    await notifyDemandCreated(userId, chamado.id, chamado.protocolo);
 
     return {
       id: chamado.id,
@@ -717,6 +722,13 @@ export const demandService = {
     });
 
     await invalidateMetricsCache(chamado.gestorid);
+    await notifyDemandStatusChange({
+      userId: chamado.cidadaoid,
+      chamadoId: chamadoId,
+      protocolo: chamado.protocolo,
+      fromStatus: oldStatus,
+      toStatus: updated.status,
+    });
 
     return {
       id: updated.id,
