@@ -479,6 +479,42 @@ export const openApiSpec = {
         },
       },
     },
+    '/dashboard/etl/climate': {
+      get: {
+        tags: ['Dashboard ETL'],
+        summary: 'Consultar clima e chamados por dia',
+        description: 'Lê a tabela final chamados_clima_diario no Neon configurado em ETL_DATABASE_URL.',
+        security: [],
+        responses: {
+          200: {
+            description: 'Série diária de clima (Open-Meteo) e chamados',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    data: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          data: { type: 'string', format: 'date' },
+                          temperatura: { type: 'number', nullable: true },
+                          precipitacao: { type: 'number', nullable: true },
+                          chamados: { type: 'integer' },
+                        },
+                      },
+                    },
+                    updatedAt: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+            },
+          },
+          503: { description: 'Banco do ETL indisponível ou não configurado' },
+        },
+      },
+    },
     '/demands/public': {
       get: {
         tags: ['Demands'],
