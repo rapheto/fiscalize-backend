@@ -336,14 +336,16 @@ model refresh_token {
 
 // Created by AI.
 model usuario_dispositivo {
-  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  usuario_id   String   @db.Uuid
-  device_hash  String   @db.VarChar(64)
-  device_name  String?  @db.VarChar(120)
-  trusted      Boolean  @default(true)
-  created_at   DateTime @default(now()) @db.Timestamptz(6)
-  last_used_at DateTime @default(now()) @db.Timestamptz(6)
-  usuario      usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  id                    String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  usuario_id            String    @db.Uuid
+  device_hash           String    @db.VarChar(64)
+  device_name           String?   @db.VarChar(120)
+  trusted               Boolean   @default(true)
+  push_token            String?   @db.VarChar(255)
+  push_token_updated_at DateTime? @db.Timestamptz(6)
+  created_at            DateTime  @default(now()) @db.Timestamptz(6)
+  last_used_at          DateTime  @default(now()) @db.Timestamptz(6)
+  usuario               usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 
   @@unique([usuario_id, device_hash])
   @@index([usuario_id])

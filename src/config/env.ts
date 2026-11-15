@@ -46,6 +46,7 @@ export function assertEmailTransportConfigured(): void {
 export const OTP_EXPIRATION_MINUTES = 5;
 export const OTP_RESEND_COOLDOWN_SECONDS = 60;
 export const MFA_VERIFICATION_EXPIRATION_MINUTES = 10;
+export const EXPO_ACCESS_TOKEN = process.env.EXPO_ACCESS_TOKEN || '';
 
 export const PORT = Number(process.env.PORT) || 3000;
 // Created by AI.
