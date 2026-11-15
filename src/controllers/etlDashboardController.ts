@@ -11,4 +11,14 @@ export const etlDashboardController = {
       next(error);
     }
   },
+
+  // Created by AI.
+  async listClimate(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await etlDashboardService.listClimate();
+      res.status(200).json({ data, updatedAt: new Date().toISOString() });
+    } catch (error) {
+      next(error);
+    }
+  },
 };
