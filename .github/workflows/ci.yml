@@ -1,0 +1,42 @@
+name: CI
+
+# Created by AI.
+# Build e testes unitários do backend em cada push e pull request deste
+# repositório. O repositório mobile (submódulo) já roda a suíte completa, mas
+# só depois que o ponteiro do submódulo é atualizado; este workflow dá retorno
+# já no PR do backend.
+on:
+  push:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  # Created by AI.
+  build-test:
+    name: Build e testes unitários
+    runs-on: ubuntu-latest
+    env:
+      # `prisma generate` lê a URL da configuração, mas não conecta ao banco.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      NODE_ENV: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Testes unitários
+        run: npm test
