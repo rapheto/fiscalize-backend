@@ -14,7 +14,14 @@ export class AppError extends Error {
 }
 
 // Mapeamento de erros Prisma para status HTTP
+// Updated by AI.
 const prismaErrorMap: Record<string, { statusCode: number; message: string }> = {
+  // Created by AI.
+  // Valor maior que a coluna (RNF-SEC-13): erro do cliente, não do servidor.
+  P2000: {
+    statusCode: 400,
+    message: 'Valor maior que o tamanho permitido para o campo.',
+  },
   // Unique constraint violation
   P2002: {
     statusCode: 409,
