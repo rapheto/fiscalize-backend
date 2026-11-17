@@ -6,13 +6,25 @@ import {
   authenticationRateLimiter,
   otpRateLimiter,
 } from '../middlewares/rateLimitMiddleware';
+// Created by AI.
+import { validate } from '../middlewares/validate';
+// Created by AI.
+import {
+  changePasswordSchema,
+  loginSchema,
+  refreshTokenSchema,
+  registerSchema,
+  updateMeSchema,
+} from '../validators/authSchemas';
 
 const router = Router();
 
 // Updated by AI.
-router.post('/register', authenticationRateLimiter, authController.register);
 // Updated by AI.
-router.post('/login', authenticationRateLimiter, authController.login);
+router.post('/register', authenticationRateLimiter, validate(registerSchema), authController.register);
+// Updated by AI.
+// Updated by AI.
+router.post('/login', authenticationRateLimiter, validate(loginSchema), authController.login);
 // Created by AI.
 router.post('/2fa/verify', otpRateLimiter, authController.verifyOtp);
 router.post(
@@ -22,14 +34,18 @@ router.post(
   authController.requestCriticalOtp
 );
 // Created by AI.
-router.post('/refresh', authenticationRateLimiter, authController.refresh);
 // Updated by AI.
-router.post('/logout', authenticate, authController.logout);
+router.post('/refresh', authenticationRateLimiter, validate(refreshTokenSchema), authController.refresh);
+// Updated by AI.
+// Updated by AI.
+router.post('/logout', authenticate, validate(refreshTokenSchema), authController.logout);
 router.get('/me', authenticate, authController.me);
 // Created by AI.
-router.put('/me', authenticate, authController.updateMe);
+// Updated by AI.
+router.put('/me', authenticate, validate(updateMeSchema), authController.updateMe);
 // Created by AI.
-router.patch('/me/password', authenticate, authController.changePassword);
+// Updated by AI.
+router.patch('/me/password', authenticate, validate(changePasswordSchema), authController.changePassword);
 // Created by AI.
 // Created by AI.
 router.post('/me/export', authenticate, authController.exportMe);
