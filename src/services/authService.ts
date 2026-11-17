@@ -318,6 +318,9 @@ export const authService = {
   },
 
   // Created by AI.
+  // Updated by AI.
+  // RNF-SEC-16: registra otp_falha (código errado) e otp_esgotado (5ª tentativa
+  // invalida o desafio). Respostas e contagem de tentativas não mudaram.
   async verifyOtp(
     challengeToken: string,
     code: string,
@@ -341,6 +344,11 @@ export const authService = {
       await prisma.otp_challenge.update({
         where: { id: challenge.id },
         data: { attempts, ...(attempts >= 5 ? { consumed_at: new Date() } : {}) },
+      });
+      logSecurityEvent(attempts >= 5 ? 'otp_esgotado' : 'otp_falha', {
+        userId: challenge.usuario_id,
+        tentativas: attempts,
+        finalidade: challenge.purpose,
       });
       throw new AppError(401, 'Código temporário inválido.');
     }

@@ -54,4 +54,29 @@ describe('logger (RNF-SEC-16)', () => {
     expect(info.message).toBe('falha');
     expect(JSON.stringify(info)).not.toContain('cidadao@example.com');
   });
+
+  it('safeErrorInfo registra só nome, código e modelo de erros do Prisma', () => {
+    const error = Object.assign(
+      new Error('Invalid `prisma.usuario.create()` invocation: { email: "cidadao@example.com" }'),
+      { name: 'PrismaClientKnownRequestError', code: 'P2002', meta: { modelName: 'usuario', target: ['email'] } }
+    );
+
+    const info = safeErrorInfo(error);
+
+    expect(info).toMatchObject({ name: 'PrismaClientKnownRequestError', code: 'P2002', model: 'usuario' });
+    expect(info.message).toBeUndefined();
+    expect(JSON.stringify(info)).not.toContain('cidadao@example.com');
+  });
+
+  it('safeErrorInfo não registra a pilha em produção', () => {
+    const previous = process.env.NODE_ENV;
+    try {
+      process.env.NODE_ENV = 'production';
+      expect(safeErrorInfo(new Error('falha')).stack).toBeUndefined();
+      process.env.NODE_ENV = 'development';
+      expect(safeErrorInfo(new Error('falha')).stack).toBeDefined();
+    } finally {
+      process.env.NODE_ENV = previous;
+    }
+  });
 });
