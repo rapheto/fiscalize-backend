@@ -8,7 +8,7 @@ import {
   registerSchema,
   updateMeSchema,
 } from './authSchemas';
-import { DEMAND_DESCRIPTION_MAX, demandSchema, demandStatusSchema } from './demandSchemas';
+import { demandSchema, demandStatusSchema } from './demandSchemas';
 
 // Created by AI.
 // Payloads iguais aos enviados por mobile/src/services/auth-service.ts e
@@ -91,9 +91,11 @@ describe('schemas de validação (RNF-SEC-13)', () => {
     expect(firstMessage(registerSchema.safeParse({ ...appRegister, estado: 'PER' }))).toBe(
       'estado deve ser texto com até 2 caracteres.'
     );
-    expect(
-      demandSchema.safeParse({ ...appDemand, description: 'x'.repeat(DEMAND_DESCRIPTION_MAX + 1) }).success
-    ).toBe(false);
+    // A descrição não tem limite (coluna text), só checagem de tipo.
+    expect(demandSchema.safeParse({ ...appDemand, description: 'x'.repeat(20000) }).success).toBe(true);
+    expect(firstMessage(demandSchema.safeParse({ ...appDemand, description: { a: 1 } }))).toBe(
+      'description deve ser texto.'
+    );
   });
 
   it('rejeitam tipos errados', () => {

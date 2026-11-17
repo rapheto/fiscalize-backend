@@ -20,6 +20,13 @@ export function text(field: string, max: number, message?: string) {
 }
 
 // Created by AI.
+// Texto sem limite de tamanho (coluna `text` no banco). Só checa o tipo.
+export function freeText(field: string) {
+  const error = `${field} deve ser texto.`;
+  return z.union([empty, z.string(), z.number()], { error }).optional();
+}
+
+// Created by AI.
 // Texto sem conversão de número (senhas e tokens).
 export function stringOnly(message: string) {
   return z.union([empty, z.string()], { error: message }).optional();

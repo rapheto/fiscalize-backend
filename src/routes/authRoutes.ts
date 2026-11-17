@@ -37,8 +37,7 @@ router.post(
 // Updated by AI.
 router.post('/refresh', authenticationRateLimiter, validate(refreshTokenSchema), authController.refresh);
 // Updated by AI.
-// Updated by AI.
-router.post('/logout', authenticate, validate(refreshTokenSchema), authController.logout);
+router.post('/logout', authenticate, authController.logout);
 router.get('/me', authenticate, authController.me);
 // Created by AI.
 // Updated by AI.
