@@ -13,6 +13,7 @@ import { PRIVACY_POLICY_DOCUMENT } from '../config/privacyPolicy';
 import { assertPasswordPolicy } from '../utils/passwordPolicy';
 import { assertAdultBirthDate } from '../utils/agePolicy';
 import { composeAddress } from '../utils/address';
+import { logSecurityEvent } from '../utils/logger';
 import {
   createChallengeToken,
   createOtpCode,
@@ -158,18 +159,23 @@ export const authService = {
 
   // Created by AI.
   // Updated by AI.
+  // Updated by AI.
+  // RNF-SEC-16: só acrescenta logSecurityEvent antes de cada falha; respostas,
+  // contadores e bloqueio continuam iguais.
   async login(email: string, senha: string, deviceId: string, deviceName?: string) {
     const usuario = await prisma.usuario.findUnique({
       where: { email },
     });
 
     if (!usuario) {
+      logSecurityEvent('login_usuario_inexistente');
       throw new AppError(401, 'Credenciais inválidas.');
     }
 
     const now = new Date();
 
     if (usuario.bloqueado_ate && usuario.bloqueado_ate > now) {
+      logSecurityEvent('login_conta_bloqueada', { userId: usuario.id });
       throw new AppError(
         423,
         'Conta temporariamente bloqueada após tentativas de login sem sucesso. Tente novamente mais tarde.'
@@ -178,6 +184,7 @@ export const authService = {
 
     // ✔ CORRETO conforme ENUM do schema.prisma
     if (usuario.status !== 'Ativo') {
+      logSecurityEvent('login_usuario_inativo', { userId: usuario.id });
       throw new AppError(
         403,
         'Usuário inativo. Contate o administrador.'
@@ -211,12 +218,14 @@ export const authService = {
       });
 
       if (shouldLock) {
+        logSecurityEvent('conta_bloqueada', { userId: usuario.id, tentativas: failedAttempts });
         throw new AppError(
           423,
           'Conta temporariamente bloqueada após 5 tentativas de login sem sucesso. Tente novamente em 15 minutos.'
         );
       }
 
+      logSecurityEvent('login_falha', { userId: usuario.id, tentativas: failedAttempts });
       throw new AppError(401, 'Credenciais inválidas.');
     }
 
