@@ -5,6 +5,7 @@ import type { Transporter } from 'nodemailer';
 import {
   GMAIL_APP_PASSWORD,
   GMAIL_USER,
+  NODE_ENV,
   isProduction,
   OTP_EMAIL_FROM,
   OTP_EXPIRATION_MINUTES,
@@ -175,6 +176,8 @@ export async function deliverEmailOtp(
     if (isProduction) {
       throw new AppError(503, 'Serviço de entrega de código temporariamente indisponível.');
     }
+    if (NODE_ENV === 'test') return;
+
     console.info(`[MFA DEV] OTP para ${destination}: ${code}`);
     return;
   }
