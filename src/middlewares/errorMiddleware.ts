@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { logger, safeErrorInfo } from '../utils/logger';
 
 // Interface para erros operacionais
 export class AppError extends Error {
@@ -13,7 +14,14 @@ export class AppError extends Error {
 }
 
 // Mapeamento de erros Prisma para status HTTP
+// Updated by AI.
 const prismaErrorMap: Record<string, { statusCode: number; message: string }> = {
+  // Created by AI.
+  // Valor maior que a coluna (RNF-SEC-13): erro do cliente, não do servidor.
+  P2000: {
+    statusCode: 400,
+    message: 'Valor maior que o tamanho permitido para o campo.',
+  },
   // Unique constraint violation
   P2002: {
     statusCode: 409,
@@ -62,6 +70,11 @@ const getTimestamp = (): string => {
 };
 
 // Middleware de tratamento centralizado de erros
+// Updated by AI.
+// RNF-SEC-16: os logs registram só campos seguros (status, código, rota).
+// Objetos de erro inteiros, `details` e `meta` não são mais registrados, porque
+// podem conter dados pessoais ou valores enviados pelo usuário. As respostas
+// HTTP não mudaram.
 export const errorHandler = (
   error: Error | AppError,
   req: Request,
@@ -69,12 +82,13 @@ export const errorHandler = (
   next: NextFunction
 ) => {
   const timestamp = getTimestamp();
+  const route = { method: req.method, path: req.path };
 
   // 1. Erros operacionais (AppError)
   if (error instanceof AppError) {
-    console.error(
-      `[${timestamp}] AppError: ${error.statusCode} - ${error.message}`,
-      error.details
+    logger.warn(
+      { ...route, statusCode: error.statusCode },
+      `AppError: ${error.message}`
     );
 
     return res.status(error.statusCode).json({
@@ -93,9 +107,9 @@ export const errorHandler = (
     if (prismaErrorMap[code]) {
       const { statusCode, message } = prismaErrorMap[code];
 
-      console.error(
-        `[${timestamp}] PrismaError ${code}: ${message}`,
-        prismaError.meta
+      logger.warn(
+        { ...route, statusCode, prismaCode: code, model: prismaError.meta?.modelName },
+        `PrismaError: ${message}`
       );
 
       return res.status(statusCode).json({
@@ -107,7 +121,10 @@ export const errorHandler = (
     }
 
     // Erro Prisma desconhecido
-    console.error(`[${timestamp}] Unknown PrismaError: ${code}`, prismaError);
+    logger.error(
+      { ...route, statusCode: 500, prismaCode: code, model: prismaError.meta?.modelName },
+      'PrismaError desconhecido'
+    );
     return res.status(500).json({
       error: 'Erro ao processar dados.',
       code,
@@ -118,7 +135,7 @@ export const errorHandler = (
 
   // 3. Erros operacionais (AppError)
   if (error instanceof Error && error.message.includes('E-mail já cadastrado')) {
-    console.warn(`[${timestamp}] Email Duplicate Error`);
+    logger.warn({ ...route, statusCode: 409 }, 'E-mail já cadastrado');
     return res.status(409).json({
       error: error.message,
       statusCode: 409,
@@ -128,7 +145,7 @@ export const errorHandler = (
 
   // 4. Token expirado / Erro JWT
   if (error.name === 'TokenExpiredError') {
-    console.warn(`[${timestamp}] TokenExpiredError`);
+    logger.warn({ ...route, statusCode: 401 }, 'TokenExpiredError');
     return res.status(401).json({
       error: 'Token expirado. Faça login novamente.',
       statusCode: 401,
@@ -137,7 +154,7 @@ export const errorHandler = (
   }
 
   if (error.name === 'JsonWebTokenError') {
-    console.warn(`[${timestamp}] JsonWebTokenError: ${error.message}`);
+    logger.warn({ ...route, statusCode: 401 }, `JsonWebTokenError: ${error.message}`);
     return res.status(401).json({
       error: 'Token inválido.',
       statusCode: 401,
@@ -147,7 +164,7 @@ export const errorHandler = (
 
   // 4. Erro de validação
   if (error.name === 'ValidationError') {
-    console.warn(`[${timestamp}] ValidationError: ${error.message}`);
+    logger.warn({ ...route, statusCode: 400 }, `ValidationError: ${error.message}`);
     return res.status(400).json({
       error: error.message,
       statusCode: 400,
@@ -156,7 +173,7 @@ export const errorHandler = (
   }
 
   // 5. Erros inesperados / não tratados
-  console.error(`[${timestamp}] Unexpected Error:`, error);
+  logger.error({ ...route, statusCode: 500, err: safeErrorInfo(error) }, 'Erro inesperado');
 
   // Em produção, não expõe stack trace
   const isDevelopment = process.env.NODE_ENV === 'development';
