@@ -5,6 +5,7 @@ import jwt, {
 } from 'jsonwebtoken';
 import { authService } from '../services/authService';
 import { JWT_SECRET } from '../config/env';
+import { AppError } from './errorMiddleware';
 
 // Estendendo Request para incluir usuário autenticado
 declare global {
@@ -21,6 +22,7 @@ declare global {
 
 export type AuthRequest = Request;
 
+// Updated by AI.
 export const authenticate = async (
   req: AuthRequest,
   res: Response,
@@ -100,9 +102,12 @@ export const authenticate = async (
       });
     }
 
-    // Erro genérico
-    return res.status(401).json({
-      error: 'Erro na autenticação.',
-    });
+    if (error instanceof AppError && error.statusCode === 404) {
+      return res.status(401).json({
+        error: 'Usuário não encontrado.',
+      });
+    }
+
+    return next(error);
   }
 };

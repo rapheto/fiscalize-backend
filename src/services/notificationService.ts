@@ -7,8 +7,43 @@ import { prisma } from '../config/prisma';
 const EXPO_PUSH_ENDPOINT = 'https://exp.host/--/api/v2/push/send';
 const NOTIFICATION_DUPLICATE_WINDOW_MS = 5 * 60 * 1000;
 
+// Created by AI.
+export type NotificationTestType = 'demand_created' | 'status_updated';
+
+// Created by AI.
+export type NotificationTestResult =
+  | 'sent'
+  | 'notifications_disabled'
+  | 'device_not_registered'
+  | 'push_not_configured'
+  | 'delivery_failed';
+
 function hashDeviceId(deviceId: string): string {
   return createHash('sha256').update(deviceId.trim()).digest('hex');
+}
+
+// Created by AI.
+export async function getNotificationPreference(userId: string): Promise<boolean> {
+  const user = await prisma.usuario.findUnique({
+    where: { id: userId },
+    select: { notificacoes_ativas: true },
+  });
+
+  return user?.notificacoes_ativas ?? false;
+}
+
+// Created by AI.
+export async function updateNotificationPreference(
+  userId: string,
+  enabled: boolean
+): Promise<boolean> {
+  const user = await prisma.usuario.update({
+    where: { id: userId },
+    data: { notificacoes_ativas: enabled },
+    select: { notificacoes_ativas: true },
+  });
+
+  return user.notificacoes_ativas;
 }
 
 export async function registerPushToken(
@@ -66,7 +101,12 @@ export async function markNotificationRead(id: string, userId: string) {
   });
 }
 
+// Updated by AI.
 export async function notifyDemandCreated(userId: string, chamadoId: string, protocolo: string) {
+  if (!(await getNotificationPreference(userId))) {
+    return null;
+  }
+
   const existing = await prisma.notificacao.findFirst({
     where: {
       usuarioid: userId,
@@ -101,6 +141,7 @@ export async function notifyDemandCreated(userId: string, chamadoId: string, pro
   return notification;
 }
 
+// Updated by AI.
 export async function notifyDemandStatusChange({
   userId,
   chamadoId,
@@ -114,7 +155,7 @@ export async function notifyDemandStatusChange({
   fromStatus: string;
   toStatus: string;
 }) {
-  if (fromStatus === toStatus) {
+  if (fromStatus === toStatus || !(await getNotificationPreference(userId))) {
     return null;
   }
 
@@ -154,6 +195,7 @@ export async function notifyDemandStatusChange({
   return notification;
 }
 
+// Updated by AI.
 async function sendPushNotification(
   userId: string,
   payload: {
@@ -162,7 +204,7 @@ async function sendPushNotification(
     data: Record<string, string>;
   }
 ) {
-  if (!EXPO_ACCESS_TOKEN) {
+  if (!EXPO_ACCESS_TOKEN || !(await getNotificationPreference(userId))) {
     return;
   }
 
@@ -212,6 +254,77 @@ async function sendPushNotification(
     } catch {
       // The notification remains stored in the database and the client can fetch it in-app.
     }
+  }
+}
+
+// Created by AI.
+export async function sendTestPushNotification(
+  userId: string,
+  deviceId: string,
+  type: NotificationTestType
+): Promise<NotificationTestResult> {
+  if (!(await getNotificationPreference(userId))) {
+    return 'notifications_disabled';
+  }
+
+  if (!EXPO_ACCESS_TOKEN) {
+    return 'push_not_configured';
+  }
+
+  const device = await prisma.usuario_dispositivo.findUnique({
+    where: {
+      usuario_id_device_hash: {
+        usuario_id: userId,
+        device_hash: hashDeviceId(deviceId),
+      },
+    },
+    select: { id: true, push_token: true },
+  });
+
+  if (!device?.push_token) {
+    return 'device_not_registered';
+  }
+
+  const payloads: Record<NotificationTestType, { title: string; body: string }> = {
+    demand_created: {
+      title: 'Teste: ocorrência registrada',
+      body: 'Esta é uma notificação de teste para validar o recebimento no aparelho.',
+    },
+    status_updated: {
+      title: 'Teste: status atualizado',
+      body: 'Esta é uma notificação de teste de atualização de status.',
+    },
+  };
+  const payload = payloads[type];
+
+  try {
+    const response = await fetch(EXPO_PUSH_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${EXPO_ACCESS_TOKEN}`,
+      },
+      body: JSON.stringify({
+        to: device.push_token,
+        title: payload.title,
+        body: payload.body,
+        sound: 'default',
+        priority: 'high',
+        data: { type, test: true },
+      }),
+    });
+
+    const responseBody = safeJson(await response.text()) as
+      | { data?: { status?: string } }
+      | null;
+    if (!response.ok || responseBody?.data?.status !== 'ok') {
+      return 'delivery_failed';
+    }
+
+    return 'sent';
+  } catch {
+    return 'delivery_failed';
   }
 }
 
