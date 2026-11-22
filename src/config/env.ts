@@ -20,23 +20,39 @@ export const REFRESH_TOKEN_EXPIRATION_DAYS = Number(
   process.env.REFRESH_TOKEN_EXPIRATION_DAYS || 30
 );
 // Created by AI.
-export const GMAIL_USER = process.env.GMAIL_USER;
-// Created by AI.
-export const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
+// Updated by AI.
+export const RESEND_API_KEY = process.env.RESEND_API_KEY?.trim() || undefined;
 // Created by AI.
 // Updated by AI.
 export const OTP_EMAIL_FROM =
-  process.env.OTP_EMAIL_FROM || GMAIL_USER || 'no-reply@fiscalize.local';
+  process.env.OTP_EMAIL_FROM?.trim() || 'onboarding@resend.dev';
+
+// Created by AI.
+export function isValidOtpEmailFrom(value: string): boolean {
+  const trimmed = value.trim();
+  const friendlyMatch = /^([^<>]+?)\s*<([^<>]+)>$/.exec(trimmed);
+  const email = friendlyMatch ? friendlyMatch[2]?.trim() : trimmed;
+
+  if (!email) return false;
+  if (friendlyMatch && friendlyMatch[1]?.trim().length === 0) return false;
+  return /^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(email);
+}
 
 // Created by AI.
 // Updated by AI.
 export function assertEmailTransportConfigured(): void {
-  if (isProduction && (!GMAIL_USER || !GMAIL_APP_PASSWORD)) {
+  if (
+    isProduction &&
+    (!RESEND_API_KEY || !/^re_[A-Za-z0-9_-]+$/.test(RESEND_API_KEY))
+  ) {
     throw new Error(
-      'Missing email credentials: set GMAIL_USER and GMAIL_APP_PASSWORD so MFA codes can be delivered.'
+      'Missing email credentials: set RESEND_API_KEY so MFA codes can be delivered.'
     );
   }
-  if (isProduction && /@[^@]*\.local$/i.test(OTP_EMAIL_FROM)) {
+  if (
+    isProduction &&
+    !isValidOtpEmailFrom(OTP_EMAIL_FROM)
+  ) {
     throw new Error(
       `OTP_EMAIL_FROM="${OTP_EMAIL_FROM}" is not a deliverable sender. Set a verified sender or domain.`
     );
