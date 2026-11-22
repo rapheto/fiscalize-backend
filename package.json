@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "ts-node-dev src/server.ts",
     "build": "prisma generate && tsc",
-    "start": "node dist/server.js",
+    "start": "prisma migrate deploy && node dist/server.js",
     "migrate:deploy": "prisma migrate deploy",
     "test": "jest",
     "test:watch": "jest --watch",

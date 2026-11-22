@@ -425,6 +425,10 @@ O Jest está configurado (`jest.config.ts` + `ts-jest`), mas **ainda não há ar
 
 ## 11. Deploy
 
+<!-- Updated by AI. -->
+
+### Railway
+
 O deploy é feito na **Railway** via `railway.toml`, usando o builder `nixpacks`:
 
 ```toml
@@ -434,6 +438,40 @@ buildCommand = "npm install && npm run build"
 [deploy]
 startCommand = "npm run migrate:deploy && npm run seed && npm run start"
 ```
+
+### Render
+
+O Render **não lê o `railway.toml`**, então a migração precisa estar no script
+`start` do `package.json` — hoje ele é
+`prisma migrate deploy && node dist/server.js`. Assim todo deploy aplica as
+migrações pendentes antes de subir a API, com qualquer Start Command que chame
+`npm start` / `npm run start`.
+
+Se o Start Command for sobrescrito no dashboard, mantenha o mesmo formato:
+
+```
+npm run migrate:deploy && npm run start
+```
+
+O build precisa rodar `npm run build` (como abaixo) e instalar as dependências
+de desenvolvimento, porque `prisma` e `tsc` estão em `devDependencies`:
+
+```
+npm install --include=dev && npm run build
+```
+
+Depois do primeiro deploy em um banco vazio, rode o seed **uma vez** (ele não
+está no `start` para não recriar contas de teste a cada boot):
+
+```bash
+DATABASE_URL='<url-de-producao>' SEED_ADMIN_PASSWORD='<senha-forte>' npm run seed
+```
+
+Se aparecer `500 {"error":"Erro ao processar dados.","code":"P2021"}`, o banco
+está sem schema: nenhuma migração foi aplicada. `GET /health` não detecta isso,
+porque só executa `SELECT 1`.
+
+### Variáveis
 
 Na plataforma, configure no mínimo `DATABASE_URL`, `JWT_SECRET`, `ALLOWED_ORIGINS` e `NODE_ENV=production`. O `PORT` é injetado automaticamente.
 
