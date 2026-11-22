@@ -141,9 +141,8 @@ O arquivo `.env.example` é a referência completa e comentada. Resumo:
 | `PORT` | `3000` | Porta HTTP do Express (em produção a Railway define automaticamente) |
 | `JWT_EXPIRATION` | `30m` | Validade curta do JWT de acesso (mantenha entre 15 e 60 minutos) |
 | `REFRESH_TOKEN_EXPIRATION_DAYS` | `30` | Validade do refresh token; cada renovação revoga o token anterior |
-| `OTP_EMAIL_FROM` | `GMAIL_USER` | Remetente usado no envio dos códigos MFA. Em produção não pode ser `*.local` |
-| `GMAIL_USER` | — | Conta Gmail usada como remetente e autenticação SMTP |
-| `GMAIL_APP_PASSWORD` | — | Senha de app do Gmail (16 caracteres). Exige 2FA ativa; não use a senha da conta |
+| `OTP_EMAIL_FROM` | `onboarding@resend.dev` | Remetente usado no envio dos códigos MFA |
+| `RESEND_API_KEY` | — | Chave da API do Resend; obrigatória em produção |
 | `REDIS_URL` | — | Cache de métricas e armazenamento compartilhado dos contadores de rate limiting |
 | `RATE_LIMIT_REDIS_REQUIRED` | `false` fora de produção | Exige Redis para os contadores distribuídos de rate limiting |
 | `RATE_LIMIT_GENERAL_MAX` | `100` | Requisições por janela nas rotas gerais |
@@ -180,19 +179,26 @@ código e do desafio. As ações críticas (`password`, `export`, `delete` e
 `anonymization`) usam o mesmo fluxo, mas exigem uma verificação adicional
 recente.
 
-O envio usa o SMTP do Gmail (`smtp.gmail.com:587`), gratuito e sem domínio
-próprio. É preciso configurar `GMAIL_USER` e `GMAIL_APP_PASSWORD` — uma senha de
-app de 16 caracteres, que exige verificação em duas etapas ativa na conta. O
-remetente é o próprio Gmail (`OTP_EMAIL_FROM` vazio herda `GMAIL_USER`).
+O envio usa a API HTTPS oficial do Resend. Configure `RESEND_API_KEY` e,
+opcionalmente, `OTP_EMAIL_FROM`. O padrão `onboarding@resend.dev` serve
+apenas para testes e possui limitações de destinatário. Para produção, verifique
+um domínio próprio no Resend e configure um endereço remetente desse domínio.
 
-Limites do Google: 500 destinatários por dia, e o uso automatizado pode
-bloquear a conta — adequado para desenvolvimento e demonstração, não para
-volume de produção.
-
-Em desenvolvimento, quando as credenciais não estão configuradas, o código é
+Em desenvolvimento, quando a chave não está configurada, o código é
 registrado no log do backend. Em produção, a ausência das credenciais ou um
-remetente inválido impede a inicialização do servidor, e uma falha do Gmail
+remetente inválido impede a inicialização do servidor, e uma falha do Resend
 interrompe a solicitação sem criar um desafio utilizável.
+
+Para uso local, configure `RESEND_API_KEY` no arquivo `.env` e mantenha
+`OTP_EMAIL_FROM=onboarding@resend.dev` enquanto estiver utilizando o ambiente
+de testes do Resend. O envio real não é realizado em testes automatizados.
+Nunca registre uma chave real no repositório.
+
+No Render, cadastre `RESEND_API_KEY` e `OTP_EMAIL_FROM` nas variáveis de ambiente
+do serviço. Em produção, `NODE_ENV` deve ser `production` e `RESEND_API_KEY`
+deve ser uma chave válida do Resend. Depois de verificar um domínio próprio,
+substitua o remetente de testes pelo endereço verificado sem alterar o fluxo
+de autenticação.
 
 ### Rate limiting e proteção contra DDoS
 
