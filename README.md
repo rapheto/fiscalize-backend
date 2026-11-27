@@ -222,6 +222,42 @@ não substitui WAF, CDN ou proteção anti-DDoS do provedor. Essas camadas exter
 devem ser comprovadas separadamente por configuração, evidência do provedor e
 procedimentos operacionais.
 
+### Headers de segurança (Helmet)
+
+O [Helmet](https://helmetjs.github.io/) é um middleware do Express que adiciona
+headers HTTP de segurança a todas as respostas. Esses headers instruem o
+navegador a ligar proteções que ele já tem, mas que ficam desligadas por padrão.
+Ele não substitui validação de entrada, autenticação ou autorização.
+
+Configuração em `src/config/securityHeaders.ts`, registrada em `src/server.ts`
+antes do CORS, do rate limiter e das rotas (respostas de erro e HTTP 429 também
+recebem os headers).
+
+| Header | Efeito |
+|---|---|
+| `Content-Security-Policy` | Limita de onde a página pode carregar scripts, estilos e imagens (mitiga XSS) |
+| `Strict-Transport-Security` | Faz o navegador usar só HTTPS nesse domínio |
+| `X-Content-Type-Options: nosniff` | Impede o navegador de "adivinhar" o tipo do conteúdo |
+| `X-Frame-Options: SAMEORIGIN` | Impede que a API seja embutida em iframe de outro site (clickjacking) |
+| `Cross-Origin-Resource-Policy` | Restringe quem pode carregar os recursos da API |
+| `Referrer-Policy: no-referrer` | Não vaza a URL de origem em requisições |
+| `X-Powered-By` | **Removido**: o servidor deixa de anunciar que usa Express |
+
+**Exceção:** a página `/docs` (Swagger UI) carrega scripts e estilos do
+`unpkg.com` e usa código inline. Só ela recebe uma CSP mais permissiva; todos
+os outros headers permanecem iguais. Se o Swagger passar a ser servido de outra
+origem, ajuste `docsSecurityHeaders`.
+
+Como verificar com o servidor rodando:
+
+```bash
+curl -sI http://localhost:3000/health
+```
+
+A resposta deve conter `Content-Security-Policy`, `X-Content-Type-Options: nosniff`
+e `X-Frame-Options`, e não deve conter `X-Powered-By`. Abra também `/docs` no
+navegador e confirme que o Swagger UI carrega sem erros de CSP no console.
+
 ---
 
 ## 5. Rodar o servidor

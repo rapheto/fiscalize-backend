@@ -12,6 +12,7 @@ import etlDashboardRoutes from './routes/etlDashboardRoutes';
 import { errorHandler } from './middlewares/errorMiddleware';
 import { registerCronJobs } from './config/cron';
 import { createCorsMiddleware } from './config/cors';
+import { securityHeadersMiddleware } from './config/securityHeaders';
 import { healthCheckHandler } from './config/health';
 import { connectPrisma, disconnectPrisma } from './config/prisma';
 import { isRedisAvailable } from './config/redis';
@@ -39,6 +40,9 @@ const trustedProxySetting =
       ? Number(TRUST_PROXY)
       : TRUST_PROXY;
 app.set('trust proxy', trustedProxySetting);
+// Updated by AI.
+// Helmet primeiro, para que todas as respostas (inclusive erros e 429) saiam com os headers de segurança.
+app.use(securityHeadersMiddleware);
 app.use(createCorsMiddleware());
 app.use(express.json());
 app.use(cookieParser());
