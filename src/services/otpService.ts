@@ -60,6 +60,13 @@ function getResendClient(): Resend {
 
 // Created by AI.
 // Updated by AI.
+async function sendViaGmail(destination: string, subject: string, text: string): Promise<void> {
+  const message = {
+    from: formatSender(parseSender(OTP_EMAIL_FROM)),
+    to: destination,
+    subject,
+    text,
+  };
 async function sendViaResend(destination: string, subject: string, text: string): Promise<void> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), EMAIL_TIMEOUT_MS);
@@ -83,6 +90,23 @@ async function sendViaResend(destination: string, subject: string, text: string)
       throw new AppError(503, 'Não foi possível enviar o código temporário.');
     }
   } catch (error) {
+    const failure = error as { code?: string; responseCode?: number; message?: string };
+    // A stale pooled connection or a rotated Gmail IP is recoverable: drop the
+    // cached address and try once more before giving up.
+    if (failure.code && RETRYABLE_SMTP_CODES.has(failure.code)) {
+      resetGmailTransport();
+      try {
+        await (await getGmailTransport()).sendMail(message);
+        return;
+      } catch (retryError) {
+        const retryFailure = retryError as { code?: string; responseCode?: number; message?: string };
+        console.error('[OTP] Gmail SMTP rejected the message', {
+          code: retryFailure.code,
+          responseCode: retryFailure.responseCode,
+          // Sem `message`: o texto do SMTP pode conter o e-mail do destinatário.
+        });
+        throw new AppError(503, 'Não foi possível enviar o código temporário.');
+      }
     if (error instanceof AppError) {
       throw error;
     }
@@ -91,6 +115,8 @@ async function sendViaResend(destination: string, subject: string, text: string)
     console.error('[OTP] Resend request failed', {
       name: failure.name,
       code: failure.code,
+      responseCode: failure.responseCode,
+      // Sem `message`: o texto do SMTP pode conter o e-mail do destinatário.
     });
     throw new AppError(503, 'Não foi possível enviar o código temporário.');
   } finally {
@@ -114,7 +140,10 @@ export async function deliverEmailOtp(
     if (isProduction) {
       throw new AppError(503, 'Serviço de entrega de código temporariamente indisponível.');
     }
-    console.info(`[MFA DEV] OTP para ${destination}: ${code}`);
+    // Só chega aqui fora de produção (em produção, o bloco acima lança 503).
+    // O código continua no log para permitir login local sem Gmail; o e-mail
+    // do usuário não é mais registrado (RNF-SEC-16).
+    console.info(`[MFA DEV] OTP (${purpose}): ${code}`);
     return;
   }
 
