@@ -141,9 +141,8 @@ O arquivo `.env.example` é a referência completa e comentada. Resumo:
 | `PORT` | `3000` | Porta HTTP do Express (em produção a Railway define automaticamente) |
 | `JWT_EXPIRATION` | `30m` | Validade curta do JWT de acesso (mantenha entre 15 e 60 minutos) |
 | `REFRESH_TOKEN_EXPIRATION_DAYS` | `30` | Validade do refresh token; cada renovação revoga o token anterior |
-| `OTP_EMAIL_FROM` | `GMAIL_USER` | Remetente usado no envio dos códigos MFA. Em produção não pode ser `*.local` |
-| `GMAIL_USER` | — | Conta Gmail usada como remetente e autenticação SMTP |
-| `GMAIL_APP_PASSWORD` | — | Senha de app do Gmail (16 caracteres). Exige 2FA ativa; não use a senha da conta |
+| `OTP_EMAIL_FROM` | `onboarding@resend.dev` | Remetente usado no envio dos códigos MFA |
+| `RESEND_API_KEY` | — | Chave da API do Resend; obrigatória em produção |
 | `REDIS_URL` | — | Cache de métricas e armazenamento compartilhado dos contadores de rate limiting |
 | `RATE_LIMIT_REDIS_REQUIRED` | `false` fora de produção | Exige Redis para os contadores distribuídos de rate limiting |
 | `RATE_LIMIT_GENERAL_MAX` | `100` | Requisições por janela nas rotas gerais |
@@ -180,19 +179,26 @@ código e do desafio. As ações críticas (`password`, `export`, `delete` e
 `anonymization`) usam o mesmo fluxo, mas exigem uma verificação adicional
 recente.
 
-O envio usa o SMTP do Gmail (`smtp.gmail.com:587`), gratuito e sem domínio
-próprio. É preciso configurar `GMAIL_USER` e `GMAIL_APP_PASSWORD` — uma senha de
-app de 16 caracteres, que exige verificação em duas etapas ativa na conta. O
-remetente é o próprio Gmail (`OTP_EMAIL_FROM` vazio herda `GMAIL_USER`).
+O envio usa a API HTTPS oficial do Resend. Configure `RESEND_API_KEY` e,
+opcionalmente, `OTP_EMAIL_FROM`. O padrão `onboarding@resend.dev` serve
+apenas para testes e possui limitações de destinatário. Para produção, verifique
+um domínio próprio no Resend e configure um endereço remetente desse domínio.
 
-Limites do Google: 500 destinatários por dia, e o uso automatizado pode
-bloquear a conta — adequado para desenvolvimento e demonstração, não para
-volume de produção.
-
-Em desenvolvimento, quando as credenciais não estão configuradas, o código é
+Em desenvolvimento, quando a chave não está configurada, o código é
 registrado no log do backend. Em produção, a ausência das credenciais ou um
-remetente inválido impede a inicialização do servidor, e uma falha do Gmail
+remetente inválido impede a inicialização do servidor, e uma falha do Resend
 interrompe a solicitação sem criar um desafio utilizável.
+
+Para uso local, configure `RESEND_API_KEY` no arquivo `.env` e mantenha
+`OTP_EMAIL_FROM=onboarding@resend.dev` enquanto estiver utilizando o ambiente
+de testes do Resend. O envio real não é realizado em testes automatizados.
+Nunca registre uma chave real no repositório.
+
+No Render, cadastre `RESEND_API_KEY` e `OTP_EMAIL_FROM` nas variáveis de ambiente
+do serviço. Em produção, `NODE_ENV` deve ser `production` e `RESEND_API_KEY`
+deve ser uma chave válida do Resend. Depois de verificar um domínio próprio,
+substitua o remetente de testes pelo endereço verificado sem alterar o fluxo
+de autenticação.
 
 ### Rate limiting e proteção contra DDoS
 
@@ -419,6 +425,10 @@ O Jest está configurado (`jest.config.ts` + `ts-jest`), mas **ainda não há ar
 
 ## 11. Deploy
 
+<!-- Updated by AI. -->
+
+### Railway
+
 O deploy é feito na **Railway** via `railway.toml`, usando o builder `nixpacks`:
 
 ```toml
@@ -428,6 +438,40 @@ buildCommand = "npm install && npm run build"
 [deploy]
 startCommand = "npm run migrate:deploy && npm run seed && npm run start"
 ```
+
+### Render
+
+O Render **não lê o `railway.toml`**, então a migração precisa estar no script
+`start` do `package.json` — hoje ele é
+`prisma migrate deploy && node dist/server.js`. Assim todo deploy aplica as
+migrações pendentes antes de subir a API, com qualquer Start Command que chame
+`npm start` / `npm run start`.
+
+Se o Start Command for sobrescrito no dashboard, mantenha o mesmo formato:
+
+```
+npm run migrate:deploy && npm run start
+```
+
+O build precisa rodar `npm run build` (como abaixo) e instalar as dependências
+de desenvolvimento, porque `prisma` e `tsc` estão em `devDependencies`:
+
+```
+npm install --include=dev && npm run build
+```
+
+Depois do primeiro deploy em um banco vazio, rode o seed **uma vez** (ele não
+está no `start` para não recriar contas de teste a cada boot):
+
+```bash
+DATABASE_URL='<url-de-producao>' SEED_ADMIN_PASSWORD='<senha-forte>' npm run seed
+```
+
+Se aparecer `500 {"error":"Erro ao processar dados.","code":"P2021"}`, o banco
+está sem schema: nenhuma migração foi aplicada. `GET /health` não detecta isso,
+porque só executa `SELECT 1`.
+
+### Variáveis
 
 Na plataforma, configure no mínimo `DATABASE_URL`, `JWT_SECRET`, `ALLOWED_ORIGINS` e `NODE_ENV=production`. O `PORT` é injetado automaticamente.
 

@@ -279,6 +279,8 @@ model usuario {
   criadoem                   DateTime                    @default(now()) @db.Timestamp(6)
   atualizadoem               DateTime                    @default(now()) @db.Timestamp(6)
   atualizadopor              String?                     @db.Uuid
+  // Updated by AI.
+  notificacoes_ativas        Boolean                     @default(true)
   // Created by AI.
   // Updated by AI.
   tentativas_login_falhas    Int                         @default(0)

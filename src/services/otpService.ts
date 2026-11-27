@@ -1,10 +1,7 @@
 import { createHash, randomBytes, randomInt } from 'crypto';
-import { promises as dnsPromises } from 'dns';
-import nodemailer from 'nodemailer';
-import type { Transporter } from 'nodemailer';
+import { Resend } from 'resend';
 import {
-  GMAIL_APP_PASSWORD,
-  GMAIL_USER,
+  RESEND_API_KEY,
   isProduction,
   OTP_EMAIL_FROM,
   OTP_EXPIRATION_MINUTES,
@@ -45,79 +42,20 @@ export function maskEmail(email: string): string {
 }
 
 // Created by AI.
-type SenderIdentity = { email: string; name?: string };
+// Created by AI.
+// Updated by AI.
+let resendClient: Resend | null = null;
 
 // Created by AI.
-function parseSender(raw: string): SenderIdentity {
-  const match = /^\s*(.*?)\s*<([^>]+)>\s*$/.exec(raw);
-  if (!match) return { email: raw.trim() };
-  const name = match[1]?.trim();
-  const email = match[2]?.trim();
-  return name && email ? { email, name } : { email: raw.trim() };
-}
-
-// Created by AI.
-function formatSender(sender: SenderIdentity): string {
-  return sender.name ? `${sender.name} <${sender.email}>` : sender.email;
-}
-
-// Created by AI.
-const GMAIL_HOST = 'smtp.gmail.com';
-// Created by AI.
-const GMAIL_PORT = 587;
-// Created by AI.
-const GMAIL_ADDRESS_TTL_MS = 10 * 60 * 1000;
-// Created by AI.
-const RETRYABLE_SMTP_CODES = new Set(['EDNS', 'ECONNECTION', 'ESOCKET', 'ETIMEDOUT', 'ECONNREFUSED']);
-
-// Created by AI.
-let gmailTransport: Transporter | null = null;
-// Created by AI.
-let gmailAddress: { ip: string; expiresAt: number } | null = null;
-
-// Created by AI.
-async function resolveGmailAddress(): Promise<string> {
-  if (gmailAddress && gmailAddress.expiresAt > Date.now()) {
-    return gmailAddress.ip;
+// Updated by AI.
+function getResendClient(): Resend {
+  if (!RESEND_API_KEY) {
+    throw new AppError(503, 'Serviço de entrega de código temporariamente indisponível.');
   }
-  const { address } = await dnsPromises.lookup(GMAIL_HOST, { family: 4 });
-  gmailAddress = { ip: address, expiresAt: Date.now() + GMAIL_ADDRESS_TTL_MS };
-  return address;
-}
-
-// Created by AI.
-async function getGmailTransport(): Promise<Transporter> {
-  if (gmailTransport) return gmailTransport;
-  const address = await resolveGmailAddress();
-  gmailTransport = nodemailer.createTransport({
-    host: address,
-    port: GMAIL_PORT,
-    secure: false,
-    servername: GMAIL_HOST,
-    auth: {
-      user: GMAIL_USER as string,
-      pass: GMAIL_APP_PASSWORD as string,
-    },
-    pool: true,
-    maxConnections: 1,
-    connectionTimeout: EMAIL_TIMEOUT_MS,
-    greetingTimeout: EMAIL_TIMEOUT_MS,
-    socketTimeout: EMAIL_TIMEOUT_MS,
-  });
-  return gmailTransport;
-}
-
-// Created by AI.
-function resetGmailTransport(): void {
-  if (gmailTransport) {
-    try {
-      gmailTransport.close();
-    } catch {
-      // ignore: the transport is discarded anyway
-    }
+  if (!resendClient) {
+    resendClient = new Resend(RESEND_API_KEY);
   }
-  gmailTransport = null;
-  gmailAddress = null;
+  return resendClient;
 }
 
 // Created by AI.
@@ -129,9 +67,28 @@ async function sendViaGmail(destination: string, subject: string, text: string):
     subject,
     text,
   };
+async function sendViaResend(destination: string, subject: string, text: string): Promise<void> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), EMAIL_TIMEOUT_MS);
 
   try {
-    await (await getGmailTransport()).sendMail(message);
+    const { error } = await getResendClient().emails.send(
+      {
+        from: OTP_EMAIL_FROM,
+        to: destination,
+        subject,
+        text,
+      },
+      { signal: controller.signal }
+    );
+
+    if (error) {
+      console.error('[OTP] Resend API rejected the message', {
+        name: error.name,
+        statusCode: error.statusCode,
+      });
+      throw new AppError(503, 'Não foi possível enviar o código temporário.');
+    }
   } catch (error) {
     const failure = error as { code?: string; responseCode?: number; message?: string };
     // A stale pooled connection or a rotated Gmail IP is recoverable: drop the
@@ -150,13 +107,20 @@ async function sendViaGmail(destination: string, subject: string, text: string):
         });
         throw new AppError(503, 'Não foi possível enviar o código temporário.');
       }
+    if (error instanceof AppError) {
+      throw error;
     }
-    console.error('[OTP] Gmail SMTP rejected the message', {
+
+    const failure = error as { name?: string; code?: string };
+    console.error('[OTP] Resend request failed', {
+      name: failure.name,
       code: failure.code,
       responseCode: failure.responseCode,
       // Sem `message`: o texto do SMTP pode conter o e-mail do destinatário.
     });
     throw new AppError(503, 'Não foi possível enviar o código temporário.');
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -172,7 +136,7 @@ export async function deliverEmailOtp(
     : 'Código de confirmação de ação crítica';
   const text = `Seu código Fiscalize é ${code}. Ele expira em ${OTP_EXPIRATION_MINUTES} minutos e só pode ser usado uma vez.`;
 
-  if (!GMAIL_USER || !GMAIL_APP_PASSWORD) {
+  if (!RESEND_API_KEY) {
     if (isProduction) {
       throw new AppError(503, 'Serviço de entrega de código temporariamente indisponível.');
     }
@@ -183,5 +147,5 @@ export async function deliverEmailOtp(
     return;
   }
 
-  await sendViaGmail(destination, subject, text);
+  await sendViaResend(destination, subject, text);
 }
