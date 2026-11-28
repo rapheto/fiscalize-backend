@@ -163,8 +163,9 @@ describe('deliverEmailOtp', () => {
 
     await deliverEmailOtp('cidadao@example.test', '123456', OTP_PURPOSE.LOGIN);
 
-    expect(consoleInfo).toHaveBeenCalledWith(
-      '[MFA DEV] OTP para cidadao@example.test: 123456'
-    );
+    // Updated by AI.
+    // RNF-SEC-16: o código aparece no log de desenvolvimento, mas o e-mail não.
+    expect(consoleInfo).toHaveBeenCalledWith(`[MFA DEV] OTP (${OTP_PURPOSE.LOGIN}): 123456`);
+    expect(JSON.stringify(consoleInfo.mock.calls)).not.toContain('cidadao@example.test');
   });
 });
