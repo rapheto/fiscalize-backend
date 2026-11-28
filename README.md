@@ -138,7 +138,7 @@ O arquivo `.env.example` é a referência completa e comentada. Resumo:
 | Variável | Padrão | Descrição |
 |----------|--------|-----------|
 | `NODE_ENV` | `development` | `development` \| `production` \| `test` |
-| `PORT` | `3000` | Porta HTTP do Express (em produção a Railway define automaticamente) |
+| `PORT` | `3000` | Porta HTTP do Express (em produção o Render define automaticamente) |
 | `JWT_EXPIRATION` | `30m` | Validade curta do JWT de acesso (mantenha entre 15 e 60 minutos) |
 | `REFRESH_TOKEN_EXPIRATION_DAYS` | `30` | Validade do refresh token; cada renovação revoga o token anterior |
 | `OTP_EMAIL_FROM` | `onboarding@resend.dev` | Remetente usado no envio dos códigos MFA |
@@ -463,21 +463,10 @@ O Jest está configurado (`jest.config.ts` + `ts-jest`), mas **ainda não há ar
 
 <!-- Updated by AI. -->
 
-### Railway
-
-O deploy é feito na **Railway** via `railway.toml`, usando o builder `nixpacks`:
-
-```toml
-[build]
-buildCommand = "npm install && npm run build"
-
-[deploy]
-startCommand = "npm run migrate:deploy && npm run seed && npm run start"
-```
-
 ### Render
 
-O Render **não lê o `railway.toml`**, então a migração precisa estar no script
+O deploy de produção é feito no **Render** (web service). O Render não usa
+arquivo de configuração no repositório, então a migração precisa estar no script
 `start` do `package.json` — hoje ele é
 `prisma migrate deploy && node dist/server.js`. Assim todo deploy aplica as
 migrações pendentes antes de subir a API, com qualquer Start Command que chame
@@ -507,6 +496,22 @@ Se aparecer `500 {"error":"Erro ao processar dados.","code":"P2021"}`, o banco
 está sem schema: nenhuma migração foi aplicada. `GET /health` não detecta isso,
 porque só executa `SELECT 1`.
 
+### Segurança na hospedagem (Render)
+
+O que o Render fornece e o que continua sendo responsabilidade do código:
+
+| Tema | Render | Código do backend |
+|---|---|---|
+| HTTPS | TLS gerenciado, com renovação automática e redirecionamento | Nada a fazer; `TRUST_PROXY` deve refletir o proxy do Render |
+| DDoS / tráfego | Mitigação na borda da plataforma | Rate limiting por IP (Redis) e Helmet |
+| Segredos | Variáveis de ambiente do serviço | Nunca versionar `.env`; só `process.env` |
+| Disponibilidade | Health check em `/health`, reinício automático, rollback de deploy | `GET /health` testa o banco |
+| Banco | Render Postgres com criptografia em repouso e backups (conforme o plano) | Backups cifrados próprios em `ops/backup/` |
+
+Configure o **Health Check Path** do serviço como `/health`. Fornecedores,
+DPAs e pendências estão em
+`docs/RNF-SEC/FORNECEDORES-E-TERCEIROS.md` no repositório principal.
+
 ### Variáveis
 
 Na plataforma, configure no mínimo `DATABASE_URL`, `JWT_SECRET`, `ALLOWED_ORIGINS` e `NODE_ENV=production`. O `PORT` é injetado automaticamente.
@@ -533,7 +538,7 @@ fiscalize-backend/
 ├── .env.example        # referência das variáveis de ambiente
 ├── jest.config.ts      # configuração de testes
 ├── prisma.config.ts    # configuração do Prisma CLI
-├── railway.toml        # configuração de deploy
+├── railway.toml        # legado (deploy antigo na Railway); não é usado pelo Render
 ├── setup.sh            # setup automatizado
 └── tsconfig.json
 ```
